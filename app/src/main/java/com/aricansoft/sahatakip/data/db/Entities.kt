@@ -1,5 +1,6 @@
 package com.aricansoft.sahatakip.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -40,6 +41,7 @@ data class WorkItemDefinitionEntity(
     val description: String? = null,
     val tooltip: String? = null,
     val active: Boolean = true,
+    @ColumnInfo(defaultValue="'ELECTRICAL'")
     val kind: WorkItemKind = WorkItemKind.ELECTRICAL
 )
 
@@ -76,6 +78,7 @@ data class ProblemDefinitionEntity(
     val description: String? = null,
     val tooltip: String? = null,
     val active: Boolean = true,
+    @ColumnInfo(defaultValue="'PROBLEM'")
     val kind: FindingKind = FindingKind.PROBLEM
 )
 
