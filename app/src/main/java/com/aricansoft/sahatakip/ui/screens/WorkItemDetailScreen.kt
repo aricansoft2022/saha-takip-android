@@ -41,6 +41,13 @@ import java.util.Locale
 private val advantageContainer=Color(0xFFE6F4D7)
 private val advantageContent=Color(0xFF285F16)
 
+private data class FindingRecordContext(
+    val specificDescription:String?,
+    val floor:String?,
+    val unitNumber:String?,
+    val unitName:String?
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkItemDetailScreen(
@@ -313,11 +320,21 @@ fun WorkItemDetailScreen(
             kind=FindingKind.PROBLEM,
             definitions=findingDefs,
             onDismiss={showProblem=false},
-            onExisting={definitionId,include->
-                scope.launch{repository.attachProblem(blockWorkItemId,definitionId,includeInReport=include)}
+            onExisting={definitionId,recordContext,include->
+                scope.launch{
+                    repository.attachProblem(
+                        blockWorkItemId=blockWorkItemId,
+                        problemDefinitionId=definitionId,
+                        specificDescription=recordContext.specificDescription,
+                        floor=recordContext.floor,
+                        unitNumber=recordContext.unitNumber,
+                        unitName=recordContext.unitName,
+                        includeInReport=include
+                    )
+                }
                 showProblem=false
             },
-            onCreate={code,title,tooltip,include->
+            onCreate={code,title,tooltip,recordContext,include->
                 scope.launch{
                     repository.createProblemAndAttach(
                         blockWorkItemId=blockWorkItemId,
@@ -325,6 +342,10 @@ fun WorkItemDetailScreen(
                         code=code,
                         title=title,
                         tooltip=tooltip,
+                        specificDescription=recordContext.specificDescription,
+                        floor=recordContext.floor,
+                        unitNumber=recordContext.unitNumber,
+                        unitName=recordContext.unitName,
                         includeInReport=include,
                         kind=FindingKind.PROBLEM
                     )
@@ -339,11 +360,21 @@ fun WorkItemDetailScreen(
             kind=FindingKind.ADVANTAGE,
             definitions=findingDefs,
             onDismiss={showAdvantage=false},
-            onExisting={definitionId,include->
-                scope.launch{repository.attachProblem(blockWorkItemId,definitionId,includeInReport=include)}
+            onExisting={definitionId,recordContext,include->
+                scope.launch{
+                    repository.attachProblem(
+                        blockWorkItemId=blockWorkItemId,
+                        problemDefinitionId=definitionId,
+                        specificDescription=recordContext.specificDescription,
+                        floor=recordContext.floor,
+                        unitNumber=recordContext.unitNumber,
+                        unitName=recordContext.unitName,
+                        includeInReport=include
+                    )
+                }
                 showAdvantage=false
             },
-            onCreate={code,title,tooltip,include->
+            onCreate={code,title,tooltip,recordContext,include->
                 scope.launch{
                     repository.createProblemAndAttach(
                         blockWorkItemId=blockWorkItemId,
@@ -351,6 +382,10 @@ fun WorkItemDetailScreen(
                         code=code,
                         title=title,
                         tooltip=tooltip,
+                        specificDescription=recordContext.specificDescription,
+                        floor=recordContext.floor,
+                        unitNumber=recordContext.unitNumber,
+                        unitName=recordContext.unitName,
                         includeInReport=include,
                         kind=FindingKind.ADVANTAGE
                     )
@@ -403,7 +438,18 @@ private fun FindingSection(
                     if(record.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı",
                     color=if(isAdvantage && record.status==ProblemRecordStatus.OPEN)advantageContent else Color.Unspecified
                 )
-                record.note?.let{Text(it)}
+                record.specificDescription?.let{
+                    Text("Özel tanım: "+it,style=MaterialTheme.typography.bodyMedium)
+                }
+                val locationParts=buildList{
+                    record.floor?.let{add("Kat: "+it)}
+                    record.unitNumber?.let{add("No: "+it)}
+                    record.unitName?.let{add("Mahal / daire / birim: "+it)}
+                }
+                if(locationParts.isNotEmpty()){
+                    Text(locationParts.joinToString(" · "),style=MaterialTheme.typography.bodySmall)
+                }
+                record.note?.let{Text("Not: "+it)}
                 Text(formatTime(record.createdAt),style=MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Checkbox(
@@ -633,8 +679,8 @@ private fun FindingDialog(
     kind:FindingKind,
     definitions:List<ProblemDefinitionEntity>,
     onDismiss:()->Unit,
-    onExisting:(String,Boolean)->Unit,
-    onCreate:(String,String,String?,Boolean)->Unit
+    onExisting:(String,FindingRecordContext,Boolean)->Unit,
+    onCreate:(String,String,String?,FindingRecordContext,Boolean)->Unit
 ){
     val singular=if(kind==FindingKind.ADVANTAGE)"Avantaj" else "Problem"
     val plural=if(kind==FindingKind.ADVANTAGE)"avantajlar" else "problemler"
@@ -642,7 +688,18 @@ private fun FindingDialog(
     var title by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
     var search by remember{mutableStateOf("")}
+    var specificDescription by remember{mutableStateOf("")}
+    var floor by remember{mutableStateOf("")}
+    var unitNumber by remember{mutableStateOf("")}
+    var unitName by remember{mutableStateOf("")}
     var include by remember{mutableStateOf(true)}
+
+    fun recordContext()=FindingRecordContext(
+        specificDescription=specificDescription.trim().ifBlank{null},
+        floor=floor.trim().ifBlank{null},
+        unitNumber=unitNumber.trim().ifBlank{null},
+        unitName=unitName.trim().ifBlank{null}
+    )
     val sameKindDefinitions=definitions.filter{it.kind==kind}
     val visibleDefinitions=sameKindDefinitions.filter{
         search.isBlank() ||
@@ -662,6 +719,43 @@ private fun FindingDialog(
             Column(
                 Modifier.heightIn(max=540.dp).verticalScroll(rememberScrollState())
             ){
+                Text("Bu kayda özel bağlam",style=MaterialTheme.typography.labelLarge)
+                Text(
+                    "Aşağıdaki bilgiler katalog tanımını değiştirmez; yalnız bu saha kaydına aittir.",
+                    style=MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value=specificDescription,
+                    onValueChange={specificDescription=it},
+                    label={Text("Bu probleme/avantaja özel tanım")},
+                    modifier=Modifier.fillMaxWidth(),
+                    minLines=2
+                )
+                OutlinedTextField(
+                    value=floor,
+                    onValueChange={floor=it},
+                    label={Text("Kat")},
+                    modifier=Modifier.fillMaxWidth(),
+                    singleLine=true
+                )
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    OutlinedTextField(
+                        value=unitNumber,
+                        onValueChange={unitNumber=it},
+                        label={Text("Mahal / daire / birim no")},
+                        modifier=Modifier.weight(1f),
+                        singleLine=true
+                    )
+                    OutlinedTextField(
+                        value=unitName,
+                        onValueChange={unitName=it},
+                        label={Text("Mahal / daire / birim adı")},
+                        modifier=Modifier.weight(1f),
+                        singleLine=true
+                    )
+                }
+
+                HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("Tanımlı "+plural,style=MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value=search,
@@ -672,7 +766,7 @@ private fun FindingDialog(
                 )
                 visibleDefinitions.forEach{def->
                     TextButton(
-                        onClick={onExisting(def.id,include)},
+                        onClick={onExisting(def.id,recordContext(),include)},
                         modifier=Modifier.fillMaxWidth()
                     ){
                         Text(def.code+" — "+def.title,Modifier.fillMaxWidth())
@@ -687,7 +781,7 @@ private fun FindingDialog(
                             if(existingDefinition!=null){
                                 Text("Bu kod zaten tanımlı.",style=MaterialTheme.typography.labelLarge)
                                 Text(existingDefinition.code+" — "+existingDefinition.title)
-                                TextButton(onClick={onExisting(existingDefinition.id,include)}){
+                                TextButton(onClick={onExisting(existingDefinition.id,recordContext(),include)}){
                                     Text("Mevcut "+singular.lowercase(Locale.forLanguageTag("tr-TR"))+"ı kullan")
                                 }
                             }else{
@@ -720,7 +814,7 @@ private fun FindingDialog(
                     Text("Rapora dahil et")
                 }
                 Button(
-                    onClick={onCreate(code,title,tooltip.ifBlank{null},include)},
+                    onClick={onCreate(code,title,tooltip.ifBlank{null},recordContext(),include)},
                     enabled=code.isNotBlank() && title.isNotBlank() && existingAnyKind==null
                 ){Text("Tanımla ve bu imalata ekle")}
             }
