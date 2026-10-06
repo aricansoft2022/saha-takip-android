@@ -4,9 +4,11 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.aricansoft.sahatakip.data.model.ControlStatus
+import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.ProgressStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
+import com.aricansoft.sahatakip.data.model.WorkItemKind
 
 @Entity(tableName = "projects")
 data class ProjectEntity(@PrimaryKey val id: String, val name: String, val createdAt: Long)
@@ -37,7 +39,8 @@ data class WorkItemDefinitionEntity(
     val name: String,
     val description: String? = null,
     val tooltip: String? = null,
-    val active: Boolean = true
+    val active: Boolean = true,
+    val kind: WorkItemKind = WorkItemKind.ELECTRICAL
 )
 
 @Entity(tableName = "block_type_work_items", primaryKeys=["blockTypeId","workItemDefinitionId"], indices=[Index("workItemDefinitionId")])
@@ -72,7 +75,8 @@ data class ProblemDefinitionEntity(
     val title: String,
     val description: String? = null,
     val tooltip: String? = null,
-    val active: Boolean = true
+    val active: Boolean = true,
+    val kind: FindingKind = FindingKind.PROBLEM
 )
 
 @Entity(tableName = "problem_records", indices=[Index("blockWorkItemId"), Index("problemDefinitionId")])
