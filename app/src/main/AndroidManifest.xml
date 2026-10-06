@@ -18,25 +18,35 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Canonical GKTE MIME: another Android device can open the project directly. -->
+            <!-- Canonical GKTE MIME. MIME-only filters support content:// and file://. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" android:mimeType="application/vnd.aricansoft.gkte" />
-                <data android:scheme="file" android:mimeType="application/vnd.aricansoft.gkte" />
+                <data android:mimeType="application/vnd.aricansoft.gkte" />
             </intent-filter>
 
-            <!-- WhatsApp/file managers may downgrade unknown extensions to octet-stream/zip. -->
+            <!-- WhatsApp/file managers can downgrade an unknown type to octet-stream. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="application/octet-stream" />
-                <data android:mimeType="application/zip" />
-                <data android:pathPattern=".*\.gkte" />
+                <data
+                    android:scheme="content"
+                    android:host="*"
+                    android:pathPattern=".*\.gkte"
+                    android:mimeType="application/octet-stream" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="content"
+                    android:host="*"
+                    android:pathPattern=".*\.gkte"
+                    android:mimeType="application/zip" />
             </intent-filter>
         </activity>
 
