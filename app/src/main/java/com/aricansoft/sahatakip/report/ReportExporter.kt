@@ -64,7 +64,12 @@ object ReportExporter {
 
             val problems=snapshot.problems.groupBy{it.blockWorkItemId}
             val notes=snapshot.notes.groupBy{it.blockWorkItemId}
-            val photos=snapshot.photos.groupBy{it.blockWorkItemId}
+            val findingPhotos=snapshot.photos
+                .filter{it.problemRecordId!=null}
+                .groupBy{requireNotNull(it.problemRecordId)}
+            val generalPhotos=snapshot.photos
+                .filter{it.problemRecordId==null}
+                .groupBy{it.blockWorkItemId}
 
             snapshot.workItems.groupBy{it.blockCode}.forEach{entry->
                 val blockCode=entry.key
@@ -90,13 +95,27 @@ object ReportExporter {
                                 (finding.note?.let{" — "+it} ?: "")+
                                 " ("+formatDate(finding.createdAt)+")"
                         )
+                        findingPhotos[finding.problemRecordId].orEmpty().forEach{photo->
+                            writer.paragraph(
+                                "Kanıt fotoğrafı — "+formatDate(photo.createdAt)+
+                                    (photo.caption?.let{" — "+it} ?: ""),
+                                indent=18f
+                            )
+                            val bitmap=decodeBitmap(context,Uri.parse(photo.localUri))
+                            if(bitmap!=null){
+                                writer.image(bitmap)
+                                bitmap.recycle()
+                            }else{
+                                writer.paragraph("[Kanıt fotoğrafı dosyası okunamadı]",indent=18f)
+                            }
+                        }
                     }
 
                     notes[item.blockWorkItemId].orEmpty().forEach{note->
                         writer.bullet("Not — "+note.text+" ("+formatDate(note.createdAt)+")")
                     }
 
-                    photos[item.blockWorkItemId].orEmpty().forEach{photo->
+                    generalPhotos[item.blockWorkItemId].orEmpty().forEach{photo->
                         writer.paragraph(
                             "Fotoğraf — "+formatDate(photo.createdAt)+
                                 (photo.caption?.let{" — "+it} ?: ""),
