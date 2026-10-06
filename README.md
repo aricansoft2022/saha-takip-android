@@ -38,7 +38,7 @@
 - Blok × imalat matrisi
 - Fotoğraflı PDF raporu
 - Analitik XLSX raporu
-- `.sitepack` proje yedekleme ve güvenli içe aktarma
+- `.gkte` platform bağımsız proje dosyası: Android ↔ Android ve gelecekte Windows ↔ Android
 - Offline çalışma
 
 ## Temel veri ilkesi
@@ -61,9 +61,19 @@ Kamera doğrudan bir imalat detay ekranından açılır. Bu nedenle fotoğraf ç
 **PDF:** durumlar + rapora seçilmiş problem/not/fotoğraf kanıtları.  
 **XLSX:** İmalat Matrisi, Problemler, Avantajlar, Notlar ve Fotoğraflar sayfaları.
 
-## Yedek
+## GKTE proje dosyası
 
-`.sitepack` arşivi proje verisini ve fotoğrafları birlikte taşır. İçe aktarım mevcut projeyi ezmez; kimlikler yeniden eşlenerek bağımsız bir proje kopyası oluşturulur.
+`.gkte`, proje verisini ve fotoğrafları birlikte taşıyan sürümlü, ZIP tabanlı fakat uygulamaya özel bir değişim formatıdır. Ham Android/Room veritabanı değildir.
+
+- Proje ekranından oluşturulur.
+- WhatsApp kuruluysa doğrudan WhatsApp belge paylaşımına gider; aksi halde Android paylaşım menüsü açılır.
+- Başka Android telefonda dosyaya dokunulduğunda Saha Takip dosya açıcı olarak kayıtlıdır.
+- İçe aktarım mevcut projeyi ezmez; bağımsız proje kopyası oluşturur.
+- Gelecekteki Windows masaüstü uygulaması aynı `.gkte` sözleşmesini okuyup yazacaktır.
+
+Biçim sözleşmesi: `docs/GKTE_FORMAT.md`.
+
+Eski `.sitepack` dosyaları yalnız geriye dönük içe aktarma için desteklenir.
 
 ## Derleme
 
@@ -78,6 +88,7 @@ CI başarılı olduğunda `saha-takip-debug` adlı APK artifact'i 7 gün saklan�
 - `docs/V0_PRODUCT.md`
 - `docs/DATA_MODEL.md`
 - `docs/FIELD_TEST_CHECKLIST.md`
+- `docs/GKTE_FORMAT.md`
 
 ## V0 dışında
 
