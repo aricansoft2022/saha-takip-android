@@ -1,6 +1,9 @@
 package com.aricansoft.sahatakip.ui
 
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -12,12 +15,41 @@ import com.aricansoft.sahatakip.ui.screens.HomeScreen
 import com.aricansoft.sahatakip.ui.screens.MatrixScreen
 import com.aricansoft.sahatakip.ui.screens.ProjectScreen
 import com.aricansoft.sahatakip.ui.screens.WorkItemDetailScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
-fun SahaApp(){
+fun SahaApp(
+    externalGkteUri:Uri?=null,
+    onExternalGkteConsumed:()->Unit={}
+){
     val nav=rememberNavController()
-    val app=LocalContext.current.applicationContext as SahaTakipApplication
+    val context=LocalContext.current
+    val app=context.applicationContext as SahaTakipApplication
     val repository:SahaRepository=app.repository
+
+    LaunchedEffect(externalGkteUri){
+        val uri=externalGkteUri ?: return@LaunchedEffect
+        onExternalGkteConsumed()
+
+        runCatching{
+            withContext(Dispatchers.IO){
+                app.sitePackManager.importProject(uri)
+            }
+        }.onSuccess{projectId->
+            nav.navigate("project/"+projectId){
+                popUpTo("home")
+                launchSingleTop=true
+            }
+            Toast.makeText(context,"GKTE proje dosyası içe aktarıldı.",Toast.LENGTH_SHORT).show()
+        }.onFailure{error->
+            Toast.makeText(
+                context,
+                "GKTE dosyası açılamadı: "+(error.message ?: "Bilinmeyen hata"),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 
     NavHost(navController=nav,startDestination="home"){
         composable("home"){
