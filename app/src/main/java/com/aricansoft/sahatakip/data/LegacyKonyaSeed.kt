@@ -54,8 +54,10 @@ object LegacyKonyaSeed {
                 tooltip=when(it){
                     "Daire Pano"->"Daire elektrik panosunun imalat ve kontrol kaydı."
                     "Kablo Tavaları"->"Blok içindeki kablo tava imalatının saha durumu."
+                    "Mutfak Fayans / Dolap"->"Elektrik imalatı değildir; elektrik işini etkilediği için takip edilen alakadar başka disiplin kalemi."
                     else->null
-                }
+                },
+                kind=if(it=="Mutfak Fayans / Dolap") WorkItemKind.RELATED_DISCIPLINE else WorkItemKind.ELECTRICAL
             )
         }
         val byName=definitions.associateBy{it.name}
@@ -68,7 +70,16 @@ object LegacyKonyaSeed {
         }
 
         val problemDefs=listOf(
-            ProblemDefinitionEntity("pd-lie",PROJECT_ID,"L.İ.E.","Lehimize inşaat eksiği",tooltip="Elektrik imalatını etkileyen inşaat eksiği."),
+            ProblemDefinitionEntity(
+                "pd-lie",PROJECT_ID,"L.İ.E.","Lehimize inşaat eksiği",
+                tooltip="Elektrik imalatını etkileyen, müdahale alanını açık bırakan inşaat eksiği.",
+                kind=FindingKind.ADVANTAGE
+            ),
+            ProblemDefinitionEntity(
+                "pd-related-complete",PROJECT_ID,"TAM.İNŞ.","Aleyhimize tamamlanmış inşaat işi",
+                tooltip="Elektrik işini etkileyen başka disiplin imalatı biz müdahale etmeden tamamlanmış.",
+                kind=FindingKind.PROBLEM
+            ),
             ProblemDefinitionEntity("pd-e1",PROJECT_ID,"E-1","Kolon sigortası ve KAKR yok"),
             ProblemDefinitionEntity("pd-e2",PROJECT_ID,"E-2","Sigorta kutuları boş"),
             ProblemDefinitionEntity("pd-e3",PROJECT_ID,"E-3","Sigorta kutusu hiç yok"),
@@ -147,19 +158,37 @@ object LegacyKonyaSeed {
             }
         }
 
-        val problemRecords=states.mapNotNull{entry->
-            val key=entry.key
-            val state=entry.value
-            val code=state.problemCode ?: return@mapNotNull null
-            val def=problemByCode[code] ?: return@mapNotNull null
-            ProblemRecordEntity(
-                id="pr-"+slug(key.first)+"-"+slug(key.second)+"-"+slug(code),
-                blockWorkItemId=bwiId(key.first,key.second),
-                problemDefinitionId=def.id,
-                status=ProblemRecordStatus.OPEN,
-                includeInReport=true,
-                createdAt=now
-            )
+        val problemRecords=buildList{
+            states.forEach{entry->
+                val key=entry.key
+                val state=entry.value
+                val code=state.problemCode ?: return@forEach
+                val def=problemByCode[code] ?: return@forEach
+                add(ProblemRecordEntity(
+                    id="pr-"+slug(key.first)+"-"+slug(key.second)+"-"+slug(code),
+                    blockWorkItemId=bwiId(key.first,key.second),
+                    problemDefinitionId=def.id,
+                    status=ProblemRecordStatus.OPEN,
+                    includeInReport=true,
+                    createdAt=now
+                ))
+            }
+
+            // Excel'deki mor ✔, bu başka-disiplin satırında sıradan bir elektrik
+            // "Bitti" işareti değildir: "aleyhimize tamamlanmış inşaat işi"dir.
+            val completedRelated=problemByCode.getValue("TAM.İNŞ.")
+            states.filter{entry->
+                entry.key.second=="Mutfak Fayans / Dolap" && entry.value.finished
+            }.forEach{entry->
+                add(ProblemRecordEntity(
+                    id="pr-"+slug(entry.key.first)+"-mutfak-related-complete",
+                    blockWorkItemId=bwiId(entry.key.first,"Mutfak Fayans / Dolap"),
+                    problemDefinitionId=completedRelated.id,
+                    status=ProblemRecordStatus.OPEN,
+                    includeInReport=true,
+                    createdAt=now
+                ))
+            }
         }
 
         val attributeDef=BlockAttributeDefinitionEntity(
