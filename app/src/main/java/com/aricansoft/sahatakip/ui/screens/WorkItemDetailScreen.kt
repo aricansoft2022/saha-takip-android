@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.ProblemDefinitionEntity
+import com.aricansoft.sahatakip.data.db.ProblemRecordRow
 import com.aricansoft.sahatakip.data.model.*
 import com.aricansoft.sahatakip.photo.PendingPhoto
 import com.aricansoft.sahatakip.photo.PhotoStore
@@ -35,6 +37,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+
+private val advantageContainer=Color(0xFFE6F4D7)
+private val advantageContent=Color(0xFF285F16)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,12 +62,14 @@ fun WorkItemDetailScreen(
         value=repository.getPhotoContext(blockWorkItemId)
     }
 
-    val problemDefinitionsFlow=remember(projectId){
+    val findingDefinitionsFlow=remember(projectId){
         projectId?.let{repository.observeProblemDefinitions(it)} ?: kotlinx.coroutines.flow.flowOf(emptyList())
     }
-    val problemDefs by problemDefinitionsFlow.collectAsStateWithLifecycle(initialValue=emptyList())
-    val problems by remember(blockWorkItemId){repository.observeProblemRecords(blockWorkItemId)}
+    val findingDefs by findingDefinitionsFlow.collectAsStateWithLifecycle(initialValue=emptyList())
+    val findings by remember(blockWorkItemId){repository.observeProblemRecords(blockWorkItemId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
+    val problems=remember(findings){findings.filter{it.kind==FindingKind.PROBLEM}}
+    val advantages=remember(findings){findings.filter{it.kind==FindingKind.ADVANTAGE}}
     val notes by remember(blockWorkItemId){repository.observeNotes(blockWorkItemId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val photos by remember(blockWorkItemId){repository.observePhotos(blockWorkItemId)}
@@ -70,6 +77,7 @@ fun WorkItemDetailScreen(
 
     var showNote by remember{mutableStateOf(false)}
     var showProblem by remember{mutableStateOf(false)}
+    var showAdvantage by remember{mutableStateOf(false)}
     var pendingPhoto by remember{mutableStateOf<PendingPhoto?>(null)}
     var photoInReport by remember{mutableStateOf(true)}
 
@@ -107,6 +115,26 @@ fun WorkItemDetailScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement=Arrangement.spacedBy(16.dp)
         ){
+            if(definition?.kind==WorkItemKind.RELATED_DISCIPLINE){
+                Surface(
+                    color=MaterialTheme.colorScheme.tertiaryContainer,
+                    shape=MaterialTheme.shapes.small
+                ){
+                    Column(Modifier.fillMaxWidth().padding(10.dp)){
+                        Text(
+                            "Alakadar başka disiplin kalemi",
+                            style=MaterialTheme.typography.labelLarge,
+                            color=MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                        Text(
+                            "Elektrik imalatı değildir; elektrik işini etkilediği için takip edilir.",
+                            style=MaterialTheme.typography.bodySmall,
+                            color=MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+            }
+
             definition?.tooltip?.let{
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Text("Açıklama",style=MaterialTheme.typography.labelLarge)
@@ -152,42 +180,21 @@ fun WorkItemDetailScreen(
                 Text("Bloke")
             }
 
-            HorizontalDivider()
-            Text("Problemler",style=MaterialTheme.typography.titleMedium)
-            problems.forEach{problem->
-                OutlinedCard(Modifier.fillMaxWidth()){
-                    Column(Modifier.padding(12.dp)){
-                        Row(verticalAlignment=Alignment.CenterVertically){
-                            Icon(Icons.Outlined.ReportProblem,contentDescription=null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(problem.code+" — "+problem.title,Modifier.weight(1f))
-                            problem.tooltip?.let{InfoTooltip(it)}
-                        }
-                        Text(if(problem.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı")
-                        problem.note?.let{Text(it)}
-                        Text(formatTime(problem.createdAt),style=MaterialTheme.typography.bodySmall)
-                        Row(verticalAlignment=Alignment.CenterVertically){
-                            Checkbox(
-                                checked=problem.includeInReport,
-                                onCheckedChange={checked->
-                                    scope.launch{repository.setProblemReportInclusion(problem.id,checked)}
-                                }
-                            )
-                            Text("Rapora dahil")
-                        }
-                        if(problem.status==ProblemRecordStatus.OPEN){
-                            TextButton(onClick={scope.launch{repository.closeProblem(problem.id)}}){
-                                Text("Problemi kapat")
-                            }
-                        }
-                    }
-                }
-            }
-            Button(onClick={showProblem=true}){
-                Icon(Icons.Outlined.ReportProblem,contentDescription=null)
-                Spacer(Modifier.width(8.dp))
-                Text("Problem ekle")
-            }
+            FindingSection(
+                kind=FindingKind.PROBLEM,
+                records=problems,
+                onToggleReport={id,checked->scope.launch{repository.setProblemReportInclusion(id,checked)}},
+                onClose={id->scope.launch{repository.closeProblem(id)}},
+                onAdd={showProblem=true}
+            )
+
+            FindingSection(
+                kind=FindingKind.ADVANTAGE,
+                records=advantages,
+                onToggleReport={id,checked->scope.launch{repository.setProblemReportInclusion(id,checked)}},
+                onClose={id->scope.launch{repository.closeProblem(id)}},
+                onAdd={showAdvantage=true}
+            )
 
             HorizontalDivider()
             Text("Notlar",style=MaterialTheme.typography.titleMedium)
@@ -265,8 +272,9 @@ fun WorkItemDetailScreen(
     }
 
     if(showProblem && projectId!=null){
-        ProblemDialog(
-            definitions=problemDefs,
+        FindingDialog(
+            kind=FindingKind.PROBLEM,
+            definitions=findingDefs,
             onDismiss={showProblem=false},
             onExisting={definitionId,include->
                 scope.launch{repository.attachProblem(blockWorkItemId,definitionId,includeInReport=include)}
@@ -280,12 +288,105 @@ fun WorkItemDetailScreen(
                         code=code,
                         title=title,
                         tooltip=tooltip,
-                        includeInReport=include
+                        includeInReport=include,
+                        kind=FindingKind.PROBLEM
                     )
                 }
                 showProblem=false
             }
         )
+    }
+
+    if(showAdvantage && projectId!=null){
+        FindingDialog(
+            kind=FindingKind.ADVANTAGE,
+            definitions=findingDefs,
+            onDismiss={showAdvantage=false},
+            onExisting={definitionId,include->
+                scope.launch{repository.attachProblem(blockWorkItemId,definitionId,includeInReport=include)}
+                showAdvantage=false
+            },
+            onCreate={code,title,tooltip,include->
+                scope.launch{
+                    repository.createProblemAndAttach(
+                        blockWorkItemId=blockWorkItemId,
+                        projectId=requireNotNull(projectId),
+                        code=code,
+                        title=title,
+                        tooltip=tooltip,
+                        includeInReport=include,
+                        kind=FindingKind.ADVANTAGE
+                    )
+                }
+                showAdvantage=false
+            }
+        )
+    }
+}
+
+@Composable
+private fun FindingSection(
+    kind:FindingKind,
+    records:List<ProblemRecordRow>,
+    onToggleReport:(String,Boolean)->Unit,
+    onClose:(String)->Unit,
+    onAdd:()->Unit
+){
+    HorizontalDivider()
+    val isAdvantage=kind==FindingKind.ADVANTAGE
+    Text(if(isAdvantage)"Avantajlar" else "Problemler",style=MaterialTheme.typography.titleMedium)
+
+    records.forEach{record->
+        OutlinedCard(
+            modifier=Modifier.fillMaxWidth(),
+            colors=CardDefaults.outlinedCardColors(
+                containerColor=if(isAdvantage)advantageContainer else MaterialTheme.colorScheme.surface
+            )
+        ){
+            Column(Modifier.padding(12.dp)){
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Icon(
+                        if(isAdvantage)Icons.Outlined.CheckCircle else Icons.Outlined.ReportProblem,
+                        contentDescription=null,
+                        tint=if(isAdvantage)advantageContent else MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        record.code+" — "+record.title,
+                        Modifier.weight(1f),
+                        color=if(isAdvantage)advantageContent else Color.Unspecified
+                    )
+                    record.tooltip?.let{InfoTooltip(it)}
+                }
+                Text(
+                    if(record.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı",
+                    color=if(isAdvantage && record.status==ProblemRecordStatus.OPEN)advantageContent else Color.Unspecified
+                )
+                record.note?.let{Text(it)}
+                Text(formatTime(record.createdAt),style=MaterialTheme.typography.bodySmall)
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Checkbox(
+                        checked=record.includeInReport,
+                        onCheckedChange={checked->onToggleReport(record.id,checked)}
+                    )
+                    Text("Rapora dahil")
+                }
+                if(record.status==ProblemRecordStatus.OPEN){
+                    TextButton(onClick={onClose(record.id)}){
+                        Text(if(isAdvantage)"Avantajı kapat" else "Problemi kapat")
+                    }
+                }
+            }
+        }
+    }
+
+    Button(onClick=onAdd){
+        Icon(
+            if(isAdvantage)Icons.Outlined.CheckCircle else Icons.Outlined.ReportProblem,
+            contentDescription=null
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(if(isAdvantage)"Avantaj ekle" else "Problem ekle")
     }
 }
 
@@ -416,38 +517,44 @@ private fun NoteDialog(onDismiss:()->Unit,onSave:(String,Boolean)->Unit){
 }
 
 @Composable
-private fun ProblemDialog(
+private fun FindingDialog(
+    kind:FindingKind,
     definitions:List<ProblemDefinitionEntity>,
     onDismiss:()->Unit,
     onExisting:(String,Boolean)->Unit,
     onCreate:(String,String,String?,Boolean)->Unit
 ){
+    val singular=if(kind==FindingKind.ADVANTAGE)"Avantaj" else "Problem"
+    val plural=if(kind==FindingKind.ADVANTAGE)"avantajlar" else "problemler"
     var code by remember{mutableStateOf("")}
     var title by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
     var search by remember{mutableStateOf("")}
     var include by remember{mutableStateOf(true)}
-    val visibleDefinitions=definitions.filter{
+    val sameKindDefinitions=definitions.filter{it.kind==kind}
+    val visibleDefinitions=sameKindDefinitions.filter{
         search.isBlank() ||
             it.code.contains(search,ignoreCase=true) ||
             it.title.contains(search,ignoreCase=true)
     }
     val normalizedCode=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
-    val existingDefinition=definitions.firstOrNull{
+    val existingAnyKind=definitions.firstOrNull{
         it.code.uppercase(Locale.forLanguageTag("tr-TR"))==normalizedCode && normalizedCode.isNotBlank()
     }
+    val existingDefinition=existingAnyKind?.takeIf{it.kind==kind}
+
     AlertDialog(
         onDismissRequest=onDismiss,
-        title={Text("Problem ekle")},
+        title={Text(singular+" ekle")},
         text={
             Column(
                 Modifier.heightIn(max=540.dp).verticalScroll(rememberScrollState())
             ){
-                Text("Tanımlı problemler",style=MaterialTheme.typography.labelLarge)
+                Text("Tanımlı "+plural,style=MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
                     value=search,
                     onValueChange={search=it},
-                    label={Text("Problem kodu veya tanımı ara")},
+                    label={Text(singular+" kodu veya tanımı ara")},
                     modifier=Modifier.fillMaxWidth(),
                     singleLine=true
                 )
@@ -460,15 +567,24 @@ private fun ProblemDialog(
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
-                Text("On the fly yeni problem",style=MaterialTheme.typography.labelLarge)
+                Text("On the fly yeni "+singular.lowercase(Locale.forLanguageTag("tr-TR")),style=MaterialTheme.typography.labelLarge)
                 OutlinedTextField(code,{code=it},label={Text("Kod")},modifier=Modifier.fillMaxWidth())
-                if(existingDefinition!=null){
+                if(existingAnyKind!=null){
                     OutlinedCard(Modifier.fillMaxWidth().padding(top=8.dp)){
                         Column(Modifier.padding(10.dp)){
-                            Text("Bu kod zaten tanımlı.",style=MaterialTheme.typography.labelLarge)
-                            Text(existingDefinition.code+" — "+existingDefinition.title)
-                            TextButton(onClick={onExisting(existingDefinition.id,include)}){
-                                Text("Mevcut problemi kullan")
+                            if(existingDefinition!=null){
+                                Text("Bu kod zaten tanımlı.",style=MaterialTheme.typography.labelLarge)
+                                Text(existingDefinition.code+" — "+existingDefinition.title)
+                                TextButton(onClick={onExisting(existingDefinition.id,include)}){
+                                    Text("Mevcut "+singular.lowercase(Locale.forLanguageTag("tr-TR"))+"ı kullan")
+                                }
+                            }else{
+                                Text(
+                                    "Bu kod zaten "+existingAnyKind.kind.label.lowercase(Locale.forLanguageTag("tr-TR"))+
+                                        " olarak kullanılıyor.",
+                                    style=MaterialTheme.typography.labelLarge
+                                )
+                                Text("Kodlar proje içinde tek anlam taşır; farklı bir kod kullan.")
                             }
                         }
                     }
@@ -478,14 +594,14 @@ private fun ProblemDialog(
                     {title=it},
                     label={Text("Tanım")},
                     modifier=Modifier.fillMaxWidth(),
-                    enabled=existingDefinition==null
+                    enabled=existingAnyKind==null
                 )
                 OutlinedTextField(
                     tooltip,
                     {tooltip=it},
                     label={Text("Tooltip")},
                     modifier=Modifier.fillMaxWidth(),
-                    enabled=existingDefinition==null
+                    enabled=existingAnyKind==null
                 )
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Checkbox(checked=include,onCheckedChange={include=it})
@@ -493,7 +609,7 @@ private fun ProblemDialog(
                 }
                 Button(
                     onClick={onCreate(code,title,tooltip.ifBlank{null},include)},
-                    enabled=code.isNotBlank() && title.isNotBlank() && existingDefinition==null
+                    enabled=code.isNotBlank() && title.isNotBlank() && existingAnyKind==null
                 ){Text("Tanımla ve bu imalata ekle")}
             }
         },
