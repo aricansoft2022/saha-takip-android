@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -23,15 +24,26 @@ import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.ReportWorkItemRow
 import com.aricansoft.sahatakip.data.model.ProgressStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
+import com.aricansoft.sahatakip.data.model.WorkItemKind
+
+private val matrixAdvantageContainer=Color(0xFFE6F4D7)
+private val matrixAdvantageContent=Color(0xFF285F16)
 
 private enum class MatrixFilter(val label:String){
     ALL("Tümü"),
     OPEN_PROBLEM("Açık problem"),
+    OPEN_ADVANTAGE("Açık avantaj"),
+    RELATED_DISCIPLINE("Başka disiplin"),
     DEFECTIVE("Kusurlu"),
     BLOCKED("Bloke"),
     IN_PROGRESS("Devam"),
     FINISHED("Bitti")
 }
+
+private data class MatrixWorkRow(
+    val name:String,
+    val kind:WorkItemKind
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +78,8 @@ fun MatrixScreen(
             row.blockCode in visibleBlockCodes && when(selectedFilter){
                 MatrixFilter.ALL -> true
                 MatrixFilter.OPEN_PROBLEM -> row.openProblemCount>0
+                MatrixFilter.OPEN_ADVANTAGE -> row.openAdvantageCount>0
+                MatrixFilter.RELATED_DISCIPLINE -> row.workItemKind==WorkItemKind.RELATED_DISCIPLINE
                 MatrixFilter.DEFECTIVE ->
                     row.qualityStatus==QualityStatus.DEFECTIVE ||
                         row.qualityStatus==QualityStatus.CRITICAL_DEFECT
@@ -75,8 +89,14 @@ fun MatrixScreen(
             }
         }
     }
-    val workNames=remember(visibleRows){
-        visibleRows.map{it.workItemName}.distinct().sorted()
+    val workRows=remember(visibleRows){
+        visibleRows
+            .groupBy{it.workItemName}
+            .map{entry->MatrixWorkRow(entry.key,entry.value.first().workItemKind)}
+            .sortedWith(
+                compareBy<MatrixWorkRow>{if(it.kind==WorkItemKind.ELECTRICAL)0 else 1}
+                    .thenBy{it.name}
+            )
     }
     val cellMap=remember(visibleRows){
         visibleRows.associateBy{it.workItemName to it.blockCode}
@@ -115,7 +135,7 @@ fun MatrixScreen(
                 Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
                     Text("Seçili filtreye uygun blok yok.")
                 }
-            }else if(workNames.isEmpty()){
+            }else if(workRows.isEmpty()){
                 Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
                     Text("Seçili filtreye uygun imalat kaydı yok.")
                 }
@@ -133,12 +153,12 @@ fun MatrixScreen(
                             HeaderCell("İmalat",180.dp)
                             visibleBlocks.forEach{block->HeaderCell(block.code,72.dp)}
                         }
-                        workNames.forEach{workName->
+                        workRows.forEach{work->
                             Row{
-                                WorkNameCell(workName)
+                                WorkNameCell(work)
                                 visibleBlocks.forEach{block->
                                     MatrixCell(
-                                        row=cellMap[workName to block.code],
+                                        row=cellMap[work.name to block.code],
                                         onClick=onWorkItem
                                     )
                                 }
@@ -146,8 +166,13 @@ fun MatrixScreen(
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem",
+                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem   A Açık avantaj",
                             style=MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            "Farklı zemin: alakadar başka disiplin kalemi",
+                            style=MaterialTheme.typography.bodySmall,
+                            color=MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -219,16 +244,30 @@ private fun HeaderCell(text:String,width:androidx.compose.ui.unit.Dp){
 }
 
 @Composable
-private fun WorkNameCell(text:String){
-    Box(
-        Modifier
+private fun WorkNameCell(work:MatrixWorkRow){
+    val related=work.kind==WorkItemKind.RELATED_DISCIPLINE
+    Surface(
+        color=if(related)MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surface,
+        modifier=Modifier
             .width(180.dp)
             .height(52.dp)
             .border(0.5.dp,MaterialTheme.colorScheme.outlineVariant)
-            .padding(horizontal=6.dp,vertical=4.dp),
-        contentAlignment=Alignment.CenterStart
     ){
-        Text(text,style=MaterialTheme.typography.labelMedium)
+        Box(
+            Modifier.fillMaxSize().padding(horizontal=6.dp,vertical=4.dp),
+            contentAlignment=Alignment.CenterStart
+        ){
+            Column{
+                Text(work.name,style=MaterialTheme.typography.labelMedium)
+                if(related){
+                    Text(
+                        "Başka disiplin",
+                        style=MaterialTheme.typography.labelSmall,
+                        color=MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -236,9 +275,12 @@ private fun WorkNameCell(text:String){
 private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
     val background=when{
         row==null -> MaterialTheme.colorScheme.surface
+        row.openProblemCount>0 -> MaterialTheme.colorScheme.errorContainer
+        row.openAdvantageCount>0 -> matrixAdvantageContainer
         row.qualityStatus==QualityStatus.CRITICAL_DEFECT -> MaterialTheme.colorScheme.errorContainer
         row.qualityStatus==QualityStatus.DEFECTIVE -> MaterialTheme.colorScheme.errorContainer
         row.isBlocked -> MaterialTheme.colorScheme.tertiaryContainer
+        row.workItemKind==WorkItemKind.RELATED_DISCIPLINE -> MaterialTheme.colorScheme.tertiaryContainer
         row.progressStatus==ProgressStatus.FINISHED -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
@@ -261,6 +303,9 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
             if(row.openProblemCount>0){
                 add(if(row.openProblemCount==1)"P" else "P"+row.openProblemCount)
             }
+            if(row.openAdvantageCount>0){
+                add(if(row.openAdvantageCount==1)"A" else "A"+row.openAdvantageCount)
+            }
         }.joinToString(" ")
     }
 
@@ -276,7 +321,15 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
             Column(horizontalAlignment=Alignment.CenterHorizontally){
                 Text(progress,style=MaterialTheme.typography.titleMedium)
                 if(qualifier.isNotEmpty()){
-                    Text(qualifier,style=MaterialTheme.typography.labelSmall,fontWeight=FontWeight.Bold)
+                    Text(
+                        qualifier,
+                        style=MaterialTheme.typography.labelSmall,
+                        fontWeight=FontWeight.Bold,
+                        color=if(row?.openAdvantageCount ?: 0 > 0 && (row?.openProblemCount ?: 0)==0)
+                            matrixAdvantageContent
+                        else
+                            Color.Unspecified
+                    )
                 }
             }
         }
