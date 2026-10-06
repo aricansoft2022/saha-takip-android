@@ -79,16 +79,26 @@ fun WorkItemDetailScreen(
     var showProblem by remember{mutableStateOf(false)}
     var showAdvantage by remember{mutableStateOf(false)}
     var pendingPhoto by remember{mutableStateOf<PendingPhoto?>(null)}
+    var pendingFindingRecordId by remember{mutableStateOf<String?>(null)}
     var photoInReport by remember{mutableStateOf(true)}
 
     val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){success->
         val pending=pendingPhoto
+        val findingRecordId=pendingFindingRecordId
         if(success && pending!=null){
-            scope.launch{repository.addPhoto(blockWorkItemId,pending.uri.toString(),photoInReport)}
+            scope.launch{
+                repository.addPhoto(
+                    blockWorkItemId=blockWorkItemId,
+                    uri=pending.uri.toString(),
+                    includeInReport=if(findingRecordId==null) photoInReport else true,
+                    problemRecordId=findingRecordId
+                )
+            }
         }else{
             pending?.file?.delete()
         }
         pendingPhoto=null
+        pendingFindingRecordId=null
     }
 
     Scaffold(
@@ -181,16 +191,40 @@ fun WorkItemDetailScreen(
             }
 
             FindingSection(
+                repository=repository,
                 kind=FindingKind.PROBLEM,
                 records=problems,
+                photoEnabled=photoContext!=null,
+                onTakePhoto={recordId->
+                    val pc=photoContext ?: return@FindingSection
+                    val pending=PhotoStore.create(context,pc)
+                    pendingPhoto=pending
+                    pendingFindingRecordId=recordId
+                    camera.launch(pending.uri)
+                },
+                onTogglePhotoReport={id,checked->
+                    scope.launch{repository.setPhotoReportInclusion(id,checked)}
+                },
                 onToggleReport={id,checked->scope.launch{repository.setProblemReportInclusion(id,checked)}},
                 onClose={id->scope.launch{repository.closeProblem(id)}},
                 onAdd={showProblem=true}
             )
 
             FindingSection(
+                repository=repository,
                 kind=FindingKind.ADVANTAGE,
                 records=advantages,
+                photoEnabled=photoContext!=null,
+                onTakePhoto={recordId->
+                    val pc=photoContext ?: return@FindingSection
+                    val pending=PhotoStore.create(context,pc)
+                    pendingPhoto=pending
+                    pendingFindingRecordId=recordId
+                    camera.launch(pending.uri)
+                },
+                onTogglePhotoReport={id,checked->
+                    scope.launch{repository.setPhotoReportInclusion(id,checked)}
+                },
                 onToggleReport={id,checked->scope.launch{repository.setProblemReportInclusion(id,checked)}},
                 onClose={id->scope.launch{repository.closeProblem(id)}},
                 onAdd={showAdvantage=true}
@@ -229,6 +263,7 @@ fun WorkItemDetailScreen(
                     val pc=photoContext ?: return@Button
                     val pending=PhotoStore.create(context,pc)
                     pendingPhoto=pending
+                    pendingFindingRecordId=null
                     camera.launch(pending.uri)
                 },
                 enabled=photoContext!=null
@@ -326,8 +361,12 @@ fun WorkItemDetailScreen(
 
 @Composable
 private fun FindingSection(
+    repository:SahaRepository,
     kind:FindingKind,
     records:List<ProblemRecordRow>,
+    photoEnabled:Boolean,
+    onTakePhoto:(String)->Unit,
+    onTogglePhotoReport:(String,Boolean)->Unit,
     onToggleReport:(String,Boolean)->Unit,
     onClose:(String)->Unit,
     onAdd:()->Unit
@@ -376,6 +415,15 @@ private fun FindingSection(
                         Text(if(isAdvantage)"Avantajı kapat" else "Problemi kapat")
                     }
                 }
+
+                HorizontalDivider(Modifier.padding(vertical=8.dp))
+                FindingEvidencePhotos(
+                    repository=repository,
+                    problemRecordId=record.id,
+                    photoEnabled=photoEnabled,
+                    onTakePhoto={onTakePhoto(record.id)},
+                    onToggleReport=onTogglePhotoReport
+                )
             }
         }
     }
@@ -387,6 +435,68 @@ private fun FindingSection(
         )
         Spacer(Modifier.width(8.dp))
         Text(if(isAdvantage)"Avantaj ekle" else "Problem ekle")
+    }
+}
+
+@Composable
+private fun FindingEvidencePhotos(
+    repository:SahaRepository,
+    problemRecordId:String,
+    photoEnabled:Boolean,
+    onTakePhoto:()->Unit,
+    onToggleReport:(String,Boolean)->Unit
+){
+    val photos by remember(problemRecordId){repository.observeFindingPhotos(problemRecordId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.SpaceBetween
+        ){
+            Text(
+                "Kanıt fotoğrafları ("+photos.size+")",
+                style=MaterialTheme.typography.labelLarge
+            )
+            FilledTonalButton(
+                onClick=onTakePhoto,
+                enabled=photoEnabled
+            ){
+                Icon(Icons.Outlined.CameraAlt,contentDescription=null)
+                Spacer(Modifier.width(6.dp))
+                Text("Fotoğraf ekle")
+            }
+        }
+
+        photos.forEach{photo->
+            OutlinedCard(Modifier.fillMaxWidth()){
+                Row(
+                    Modifier.fillMaxWidth().padding(8.dp),
+                    verticalAlignment=Alignment.CenterVertically
+                ){
+                    LocalPhotoThumbnail(photo.localUri)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)){
+                        Text(formatTime(photo.createdAt),style=MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Checkbox(
+                                checked=photo.includeInReport,
+                                onCheckedChange={checked->onToggleReport(photo.id,checked)}
+                            )
+                            Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+
+        if(photos.isEmpty()){
+            Text(
+                "Henüz kanıt fotoğrafı yok. İstediğin kadar ekleyebilirsin.",
+                style=MaterialTheme.typography.bodySmall
+            )
+        }
     }
 }
 
