@@ -10,8 +10,16 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Uygulama kapatılıp açıldığında veriler korunur.
 - [ ] Uçak modunda temel akışların tamamı çalışır.
 
-## 2. Anasayfa hızlı durum filtresi
+## 2. Anasayfa imalat + hızlı durum filtresi
 
+- [ ] İmalat filtresi “Tüm imalatlar” ile açılır.
+- [ ] İmalat dropdown'ında mevcut imalatlar listelenir ve kaç projede bulundukları görünür.
+- [ ] İmalat araması Türkçe büyük/küçük harf duyarsız çalışır.
+- [ ] Bir imalat seçilince yalnız o imalatı içeren projeler görünür.
+- [ ] Seçili imalat + durum filtresi aynı imalat üzerinde kesişimli çalışır.
+- [ ] Örn. Daire Pano + Açık problem, yalnız Daire Pano'da açık problemi olan projeleri gösterir.
+- [ ] Proje kartındaki durum özeti seçili imalata göre yeniden hesaplanır.
+- [ ] “Tüm imalatlar” seçilince proje geneli durum davranışına dönülür.
 - [ ] Hızlı filtre çipleri: Tümü / Açık problem / Açık avantaj / Kusurlu / Bloke / Devam / Bitti görünür.
 - [ ] Her çipte eşleşen proje sayısı görünür.
 - [ ] Projedeki bir imalatın durumu değişince anasayfa sayımları otomatik güncellenir.
