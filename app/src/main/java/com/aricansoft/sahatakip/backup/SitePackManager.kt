@@ -28,29 +28,63 @@ class SitePackManager(
     private val context:Context,
     private val database:SahaDatabase
 ){
-    suspend fun exportProject(projectId:String):Uri{
+    companion object {
+        const val GKTE_MIME="application/vnd.aricansoft.gkte"
+        const val GKTE_FORMAT="GKTE"
+        const val GKTE_FORMAT_VERSION=1
+    }
+    suspend fun exportGkte(projectId:String):Uri{
         val root=dumpProject(projectId)
-        val project=root.getJSONObject("meta").getString("projectName")
+        val projectMeta=root.getJSONObject("meta")
+        val project=projectMeta.getString("projectName")
         val photos=root.getJSONObject("tables").getJSONArray("photos")
+
+        // Android content:// URI'leri platforma özeldir. GKTE içinde fotoğraf
+        // dosyası photos/<photoId>.jpg ile taşınır; okuyucu kendi yerel URI/path'ini üretir.
+        val photoSources=mutableMapOf<String,String>()
+        for(i in 0 until photos.length()){
+            val row=photos.getJSONObject(i)
+            val id=row.getString("id")
+            val localUri=row.optString("localUri")
+            if(localUri.isNotBlank()) photoSources[id]=localUri
+            row.put("localUri","")
+        }
+
+        val manifest=JSONObject()
+            .put("format",GKTE_FORMAT)
+            .put("formatVersion",GKTE_FORMAT_VERSION)
+            .put("databaseVersion",root.optInt("databaseVersion"))
+            .put("encoding","UTF-8")
+            .put("payload","data.json")
+            .put("assetsRoot","photos/")
+            .put("project",JSONObject()
+                .put("id",projectMeta.getString("projectId"))
+                .put("name",project)
+            )
+            .put("exportedAt",projectMeta.getLong("exportedAt"))
+            .put("producer",JSONObject()
+                .put("application","Saha Takip")
+                .put("platform","android")
+            )
 
         val dir=File(context.filesDir,"backups").apply{mkdirs()}
         val stamp=DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
             .format(Instant.now().atZone(ZoneId.systemDefault()))
-        val output=File(dir,safe(project)+"_"+stamp+".sitepack")
+        val output=File(dir,safe(project)+"_"+stamp+".gkte")
 
         ZipOutputStream(FileOutputStream(output).buffered()).use{zip->
+            zip.putNextEntry(ZipEntry("manifest.json"))
+            zip.write(manifest.toString(2).toByteArray(Charsets.UTF_8))
+            zip.closeEntry()
+
             zip.putNextEntry(ZipEntry("data.json"))
             zip.write(root.toString().toByteArray(Charsets.UTF_8))
             zip.closeEntry()
 
-            for(i in 0 until photos.length()){
-                val row=photos.getJSONObject(i)
-                val id=row.getString("id")
-                val uri=row.optString("localUri")
-                if(uri.isBlank()) continue
+            photoSources.forEach{entry->
                 runCatching{
-                    context.contentResolver.openInputStream(Uri.parse(uri))?.use{input->
-                        zip.putNextEntry(ZipEntry("photos/"+id+".jpg"))
+                    context.contentResolver.openInputStream(Uri.parse(entry.value))?.use{input->
+                        zip.putNextEntry(ZipEntry("photos/"+entry.key+".jpg"))
                         input.copyTo(zip)
                         zip.closeEntry()
                     }
@@ -65,14 +99,34 @@ class SitePackManager(
         )
     }
 
-    suspend fun importProject(sitePackUri:Uri):String{
-        val tempRoot=File(context.cacheDir,"sitepack-"+UUID.randomUUID()).apply{mkdirs()}
+    @Deprecated("Use exportGkte")
+    suspend fun exportProject(projectId:String):Uri=exportGkte(projectId)
+
+    suspend fun importProject(packageUri:Uri):String{
+        val tempRoot=File(context.cacheDir,"gkte-"+UUID.randomUUID()).apply{mkdirs()}
         try{
-            extract(sitePackUri,tempRoot)
+            extract(packageUri,tempRoot)
+
+            val manifestFile=File(tempRoot,"manifest.json")
+            if(manifestFile.isFile){
+                val manifest=JSONObject(manifestFile.readText(Charsets.UTF_8))
+                require(manifest.optString("format")==GKTE_FORMAT){
+                    "Bu dosya GKTE proje paketi değil."
+                }
+                require(manifest.optInt("formatVersion")==GKTE_FORMAT_VERSION){
+                    "Desteklenmeyen GKTE sürümü: "+manifest.optInt("formatVersion")
+                }
+                require(manifest.optString("payload","data.json")=="data.json"){
+                    "GKTE payload tanımı desteklenmiyor."
+                }
+            }
+
             val dataFile=File(tempRoot,"data.json")
-            require(dataFile.isFile){"Geçerli bir .sitepack değil: data.json bulunamadı."}
+            require(dataFile.isFile){"Geçerli bir .gkte proje dosyası değil: data.json bulunamadı."}
             val root=JSONObject(dataFile.readText(Charsets.UTF_8))
-            require(root.optInt("formatVersion")==1){"Desteklenmeyen .sitepack sürümü."}
+            require(root.optInt("formatVersion")==1){
+                "Desteklenmeyen veri formatı sürümü."
+            }
             val tables=root.getJSONObject("tables")
             normalizeKindsForImport(tables)
 
