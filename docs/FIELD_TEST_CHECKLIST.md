@@ -119,17 +119,26 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Matris verileri uygulamayla eşleşir.
 - [ ] Rapora dahil olmayan kayıtlar export'a girmez.
 
-## 13. Sitepack yedek / restore
+## 13. GKTE export / Android ↔ Android taşıma
 
-- [ ] Projede birkaç durum, problem, not ve fotoğraf oluşturulur.
-- [ ] `.sitepack` yedeği dışa aktarılır.
-- [ ] Aynı yedek ana ekrandan içe aktarılır.
+- [ ] Projede birkaç durum, problem, avantaj, not ve fotoğraf oluşturulur.
+- [ ] Proje menüsünden `.gkte` dosyası üretilir.
+- [ ] Dosya adı gerçekten `.gkte` ile biter; `.zip` veya `.sitepack` olmaz.
+- [ ] WhatsApp kurulu cihazda paylaş komutu WhatsApp belge gönderimine gider.
+- [ ] WhatsApp olmayan cihazda Android paylaşım menüsüne düşer.
+- [ ] GKTE WhatsApp ile ikinci Android telefona gönderilir.
+- [ ] İkinci telefonda dosya indirildikten sonra dosyaya dokunulur.
+- [ ] Saha Takip dosyayı açabilecek uygulama olarak görünür; tek uygun handler ise doğrudan açılır.
+- [ ] GKTE içe aktarılır ve yeni projenin ekranı otomatik açılır.
 - [ ] Yeni bağımsız proje oluşur; mevcut proje ezilmez.
 - [ ] Bloklar ve imalat durumları eşleşir.
-- [ ] Problem/not kayıtları eşleşir.
+- [ ] Problem/avantaj/not kayıtları eşleşir.
 - [ ] Fotoğraflar yeni projede açılır.
 - [ ] İçe aktarılmış projeden tekrar PDF/XLSX alınabilir.
-- [ ] İçe aktarılmış projeden yeniden `.sitepack` alınabilir.
+- [ ] İçe aktarılmış projeden yeniden `.gkte` alınabilir.
+- [ ] Yeni GKTE arşivinde `manifest.json`, `data.json` ve varsa `photos/` bulunur.
+- [ ] `data.json` içindeki fotoğraf `localUri` değerleri Android cihaz URI'sına bağımlı değildir.
+- [ ] Eski `.sitepack` dosyası geriye dönük olarak hâlâ içe aktarılabilir.
 
 ## 14. Dayanıklılık
 
@@ -145,5 +154,5 @@ Aşağıdaki dört madde başarısızsa v0 `main`e merge edilmez:
 
 1. Fotoğraf doğru imalata bağlanmıyorsa.
 2. Veri uygulama yeniden açılınca kayboluyorsa.
-3. PDF veya sitepack export/restore crash yaratıyorsa.
+3. PDF veya GKTE export/import crash yaratıyorsa.
 4. Aynı problem kodu çakışması sessiz veri bozulmasına yol açıyorsa.
