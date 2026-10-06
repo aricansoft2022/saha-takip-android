@@ -21,6 +21,7 @@ import com.aricansoft.sahatakip.data.db.BlockAttributeDefinitionEntity
 import com.aricansoft.sahatakip.data.db.BlockAttributeRow
 import com.aricansoft.sahatakip.data.db.WorkItemDefinitionEntity
 import com.aricansoft.sahatakip.data.model.QualityStatus
+import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.data.model.WorkItemScope
 import com.aricansoft.sahatakip.ui.InfoTooltip
 import kotlinx.coroutines.launch
@@ -110,11 +111,26 @@ fun BlockScreen(
                 items(workItems.size,key={workItems[it].id}){index->
                     val item=workItems[index]
                     Card(
-                        modifier=Modifier.fillMaxWidth().clickable{onWorkItem(item.id)}
+                        modifier=Modifier.fillMaxWidth().clickable{onWorkItem(item.id)},
+                        colors=CardDefaults.cardColors(
+                            containerColor=if(item.kind==WorkItemKind.RELATED_DISCIPLINE)
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            else
+                                MaterialTheme.colorScheme.surface
+                        )
                     ){
                         Column(Modifier.fillMaxWidth().padding(14.dp)){
                             Row(verticalAlignment=Alignment.CenterVertically){
-                                Text(item.name,Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
+                                Column(Modifier.weight(1f)){
+                                    Text(item.name,style=MaterialTheme.typography.titleSmall)
+                                    if(item.kind==WorkItemKind.RELATED_DISCIPLINE){
+                                        Text(
+                                            "ALAKADAR BAŞKA DİSİPLİN",
+                                            style=MaterialTheme.typography.labelSmall,
+                                            color=MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
+                                }
                                 item.tooltip?.let{InfoTooltip(it)}
                             }
                             Spacer(Modifier.height(6.dp))
@@ -129,6 +145,20 @@ fun BlockScreen(
                                 }
                                 if(item.isBlocked){
                                     Text("BLOKE",style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.error)
+                                }
+                                if(item.openProblemCount>0){
+                                    Text(
+                                        "P"+if(item.openProblemCount>1)item.openProblemCount else "",
+                                        style=MaterialTheme.typography.labelMedium,
+                                        color=MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                if(item.openAdvantageCount>0){
+                                    Text(
+                                        "A"+if(item.openAdvantageCount>1)item.openAdvantageCount else "",
+                                        style=MaterialTheme.typography.labelMedium,
+                                        color=MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         }
@@ -147,8 +177,8 @@ fun BlockScreen(
                 scope.launch{repository.attachWorkItem(blockId,id,itemScope)}
                 showAdd=false
             },
-            onCreate={name,tooltip,itemScope->
-                scope.launch{repository.createWorkItemAndAttach(blockId,projectId,name,tooltip,itemScope)}
+            onCreate={name,tooltip,itemScope,kind->
+                scope.launch{repository.createWorkItemAndAttach(blockId,projectId,name,tooltip,itemScope,kind)}
                 showAdd=false
             }
         )
@@ -188,12 +218,13 @@ private fun AddWorkItemDialog(
     attachedIds:Set<String>,
     onDismiss:()->Unit,
     onAttach:(String,WorkItemScope)->Unit,
-    onCreate:(String,String?,WorkItemScope)->Unit
+    onCreate:(String,String?,WorkItemScope,WorkItemKind)->Unit
 ){
     var name by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
     var search by remember{mutableStateOf("")}
     var scope by remember{mutableStateOf(WorkItemScope.THIS_BLOCK)}
+    var kind by remember{mutableStateOf(WorkItemKind.ELECTRICAL)}
     val visibleDefinitions=definitions
         .filterNot{it.id in attachedIds && scope==WorkItemScope.THIS_BLOCK}
         .filter{
@@ -234,12 +265,39 @@ private fun AddWorkItemDialog(
                         onClick={onAttach(def.id,scope)},
                         modifier=Modifier.fillMaxWidth()
                     ){
-                        Text(def.name,Modifier.fillMaxWidth())
+                        Column(Modifier.fillMaxWidth()){
+                            Text(def.name)
+                            if(def.kind==WorkItemKind.RELATED_DISCIPLINE){
+                                Text(
+                                    "Alakadar başka disiplin",
+                                    style=MaterialTheme.typography.labelSmall,
+                                    color=MaterialTheme.colorScheme.tertiary
+                                )
+                            }
+                        }
                     }
                 }
 
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("On the fly yeni tanım",style=MaterialTheme.typography.labelLarge)
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical=4.dp),
+                    verticalAlignment=Alignment.CenterVertically
+                ){
+                    Checkbox(
+                        checked=kind==WorkItemKind.RELATED_DISCIPLINE,
+                        onCheckedChange={checked->
+                            kind=if(checked)WorkItemKind.RELATED_DISCIPLINE else WorkItemKind.ELECTRICAL
+                        }
+                    )
+                    Column{
+                        Text("Alakadar başka disiplin kalemi")
+                        Text(
+                            "Elektrik işi değildir; elektriği etkilediği için takip edilir ve listenin sonunda gösterilir.",
+                            style=MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value=name,
                     onValueChange={name=it},
@@ -253,7 +311,7 @@ private fun AddWorkItemDialog(
                     modifier=Modifier.fillMaxWidth()
                 )
                 Button(
-                    onClick={onCreate(name,tooltip.ifBlank{null},scope)},
+                    onClick={onCreate(name,tooltip.ifBlank{null},scope,kind)},
                     enabled=name.isNotBlank(),
                     modifier=Modifier.padding(top=8.dp)
                 ){Text("Tanımla ve seçili kapsama ekle")}
