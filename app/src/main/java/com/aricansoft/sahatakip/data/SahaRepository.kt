@@ -18,6 +18,7 @@ class SahaRepository(private val dao:SahaDao){
     fun observeNotes(blockWorkItemId:String)=dao.observeNotes(blockWorkItemId)
     fun observePhotos(blockWorkItemId:String)=dao.observePhotos(blockWorkItemId)
     fun observeBlockAttributes(blockId:String)=dao.observeBlockAttributes(blockId)
+    fun observeBlockAttributeDefinitions(projectId:String)=dao.observeBlockAttributeDefinitions(projectId)
     fun observeProjectMatrixRows(projectId:String)=dao.observeProjectMatrixRows(projectId)
 
     suspend fun getBlock(id:String)=dao.getBlock(id)
@@ -90,6 +91,42 @@ class SahaRepository(private val dao:SahaDao){
             })
         }
         return block
+    }
+
+    suspend fun setBlockAttributeValue(
+        blockId:String,
+        attributeDefinitionId:String,
+        value:String
+    ){
+        dao.insertBlockAttributeValues(listOf(
+            BlockAttributeValueEntity(
+                blockId=blockId,
+                attributeDefinitionId=attributeDefinitionId,
+                value=value.trim(),
+                updatedAt=System.currentTimeMillis()
+            )
+        ))
+    }
+
+    suspend fun createBlockAttributeAndSet(
+        blockId:String,
+        projectId:String,
+        name:String,
+        tooltip:String?,
+        value:String
+    ):BlockAttributeDefinitionEntity{
+        val cleanName=name.trim()
+        require(cleanName.isNotBlank()){"Parametre adı boş olamaz."}
+        val definition=BlockAttributeDefinitionEntity(
+            id="bad-"+UUID.randomUUID(),
+            projectId=projectId,
+            key="custom_"+UUID.randomUUID().toString().replace("-",""),
+            name=cleanName,
+            tooltip=tooltip?.trim()?.ifBlank{null}
+        )
+        dao.insertBlockAttributeDefinitions(listOf(definition))
+        setBlockAttributeValue(blockId,definition.id,value)
+        return definition
     }
 
     suspend fun getProjectReportSnapshot(projectId:String):ProjectReportSnapshot?{

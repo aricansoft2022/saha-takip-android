@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
+import com.aricansoft.sahatakip.data.db.BlockAttributeDefinitionEntity
+import com.aricansoft.sahatakip.data.db.BlockAttributeRow
 import com.aricansoft.sahatakip.data.db.WorkItemDefinitionEntity
 import com.aricansoft.sahatakip.data.model.QualityStatus
 import com.aricansoft.sahatakip.data.model.WorkItemScope
@@ -36,12 +39,16 @@ fun BlockScreen(
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val attributes by remember(blockId){repository.observeBlockAttributes(blockId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
+    val attributeDefinitions by remember(projectId){repository.observeBlockAttributeDefinitions(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
     val definitions by remember(projectId){repository.observeWorkItemDefinitions(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val block by produceState<com.aricansoft.sahatakip.data.db.BlockEntity?>(null,blockId){
         value=repository.getBlock(blockId)
     }
     var showAdd by remember{mutableStateOf(false)}
+    var showAddAttribute by remember{mutableStateOf(false)}
+    var editAttribute by remember{mutableStateOf<BlockAttributeRow?>(null)}
 
     Scaffold(
         topBar={
@@ -61,13 +68,34 @@ fun BlockScreen(
         }
     ){padding->
         Column(Modifier.fillMaxSize().padding(padding)){
-            if(attributes.isNotEmpty()){
-                Surface(tonalElevation=1.dp){
-                    Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp)){
+            Surface(tonalElevation=1.dp){
+                Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp)){
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment=Alignment.CenterVertically,
+                        horizontalArrangement=Arrangement.SpaceBetween
+                    ){
+                        Text("Blok parametreleri",style=MaterialTheme.typography.labelLarge)
+                        TextButton(onClick={showAddAttribute=true}){Text("+ Parametre")}
+                    }
+                    if(attributes.isEmpty()){
+                        Text("Henüz özel parametre yok.",style=MaterialTheme.typography.bodySmall)
+                    }else{
                         attributes.forEach{attr->
-                            Row(verticalAlignment=Alignment.CenterVertically){
-                                Text(attr.name+": "+attr.value,style=MaterialTheme.typography.bodyMedium)
-                                attr.tooltip?.let{InfoTooltip(it)}
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable{editAttribute=attr}
+                                    .padding(vertical=4.dp),
+                                verticalAlignment=Alignment.CenterVertically
+                            ){
+                                Column(Modifier.weight(1f)){
+                                    Row(verticalAlignment=Alignment.CenterVertically){
+                                        Text(attr.name+": "+attr.value,style=MaterialTheme.typography.bodyMedium)
+                                        attr.tooltip?.let{InfoTooltip(it)}
+                                    }
+                                }
+                                Icon(Icons.Outlined.Edit,contentDescription="Parametreyi düzenle")
                             }
                         }
                     }
@@ -122,6 +150,33 @@ fun BlockScreen(
             onCreate={name,tooltip,itemScope->
                 scope.launch{repository.createWorkItemAndAttach(blockId,projectId,name,tooltip,itemScope)}
                 showAdd=false
+            }
+        )
+    }
+
+    if(showAddAttribute){
+        AddAttributeDialog(
+            definitions=attributeDefinitions,
+            assignedIds=attributes.map{it.attributeDefinitionId}.toSet(),
+            onDismiss={showAddAttribute=false},
+            onExisting={definitionId,value->
+                scope.launch{repository.setBlockAttributeValue(blockId,definitionId,value)}
+                showAddAttribute=false
+            },
+            onCreate={name,tooltip,value->
+                scope.launch{repository.createBlockAttributeAndSet(blockId,projectId,name,tooltip,value)}
+                showAddAttribute=false
+            }
+        )
+    }
+
+    editAttribute?.let{attr->
+        EditAttributeDialog(
+            attribute=attr,
+            onDismiss={editAttribute=null},
+            onSave={value->
+                scope.launch{repository.setBlockAttributeValue(blockId,attr.attributeDefinitionId,value)}
+                editAttribute=null
             }
         )
     }
@@ -206,5 +261,112 @@ private fun AddWorkItemDialog(
         },
         confirmButton={},
         dismissButton={TextButton(onClick=onDismiss){Text("Kapat")}}
+    )
+}
+
+@Composable
+private fun AddAttributeDialog(
+    definitions:List<BlockAttributeDefinitionEntity>,
+    assignedIds:Set<String>,
+    onDismiss:()->Unit,
+    onExisting:(String,String)->Unit,
+    onCreate:(String,String?,String)->Unit
+){
+    var selectedId by remember{mutableStateOf<String?>(null)}
+    var name by remember{mutableStateOf("")}
+    var tooltip by remember{mutableStateOf("")}
+    var value by remember{mutableStateOf("")}
+    var creating by remember{mutableStateOf(false)}
+    val available=definitions.filterNot{it.id in assignedIds}
+
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text("Blok parametresi ekle")},
+        text={
+            Column(
+                Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement=Arrangement.spacedBy(8.dp)
+            ){
+                if(!creating && available.isNotEmpty()){
+                    Text("Mevcut parametreler",style=MaterialTheme.typography.labelLarge)
+                    available.forEach{def->
+                        FilterChip(
+                            selected=selectedId==def.id,
+                            onClick={selectedId=def.id},
+                            label={Text(def.name)}
+                        )
+                    }
+                    TextButton(onClick={
+                        creating=true
+                        selectedId=null
+                    }){Text("+ Yeni parametre tanımla")}
+                }else{
+                    Text("Yeni parametre",style=MaterialTheme.typography.labelLarge)
+                    OutlinedTextField(
+                        name,
+                        {name=it},
+                        label={Text("Ad")},
+                        modifier=Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        tooltip,
+                        {tooltip=it},
+                        label={Text("Tooltip / açıklama")},
+                        modifier=Modifier.fillMaxWidth()
+                    )
+                    if(available.isNotEmpty()){
+                        TextButton(onClick={creating=false}){Text("Mevcut parametreyi seç")}
+                    }
+                }
+                OutlinedTextField(
+                    value,
+                    {value=it},
+                    label={Text("Değer")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton={
+            TextButton(
+                onClick={
+                    if(creating || available.isEmpty()){
+                        onCreate(name,tooltip.ifBlank{null},value)
+                    }else{
+                        onExisting(requireNotNull(selectedId),value)
+                    }
+                },
+                enabled=value.isNotBlank() &&
+                    ((creating || available.isEmpty()) && name.isNotBlank() || (!creating && selectedId!=null))
+            ){Text("Kaydet")}
+        },
+        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
+    )
+}
+
+@Composable
+private fun EditAttributeDialog(
+    attribute:BlockAttributeRow,
+    onDismiss:()->Unit,
+    onSave:(String)->Unit
+){
+    var value by remember(attribute.attributeDefinitionId){mutableStateOf(attribute.value)}
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text(attribute.name)},
+        text={
+            Column{
+                attribute.tooltip?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
+                OutlinedTextField(
+                    value=value,
+                    onValueChange={value=it},
+                    label={Text("Değer")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton={
+            TextButton(onClick={onSave(value)},enabled=value.isNotBlank()){Text("Kaydet")}
+        },
+        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
     )
 }

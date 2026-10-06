@@ -35,7 +35,13 @@ data class ProblemRecordRow(
     val closedAt:Long?
 )
 
-data class BlockAttributeRow(val key:String,val name:String,val tooltip:String?,val value:String)
+data class BlockAttributeRow(
+    val attributeDefinitionId:String,
+    val key:String,
+    val name:String,
+    val tooltip:String?,
+    val value:String
+)
 data class PhotoContextRow(val projectName:String,val blockCode:String,val workItemName:String)
 
 data class ReportWorkItemRow(
@@ -160,13 +166,16 @@ interface SahaDao {
     fun observePhotos(blockWorkItemId:String):Flow<List<PhotoEntity>>
 
     @Query("""
-        SELECT bad.key, bad.name, bad.tooltip, bav.value
+        SELECT bad.id AS attributeDefinitionId, bad.key, bad.name, bad.tooltip, bav.value
         FROM block_attribute_values bav
         JOIN block_attribute_definitions bad ON bad.id=bav.attributeDefinitionId
         WHERE bav.blockId=:blockId
         ORDER BY bad.name
     """)
     fun observeBlockAttributes(blockId:String):Flow<List<BlockAttributeRow>>
+
+    @Query("SELECT * FROM block_attribute_definitions WHERE projectId=:projectId ORDER BY name")
+    fun observeBlockAttributeDefinitions(projectId:String):Flow<List<BlockAttributeDefinitionEntity>>
 
     @Query("""
         SELECT b.projectId
