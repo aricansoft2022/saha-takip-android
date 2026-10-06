@@ -107,15 +107,28 @@ Matris özet ve drill-down ekranıdır.
 
 Rapor katmanı yeni saha gerçeği üretmez; Room verisini filtreleyip sunar.
 
-## Yedek / geri yükleme
-`.sitepack`:
-- Proje verisini
-- Fotoğraf dosyalarını
-- Format/şema sürüm bilgisini
+## GKTE proje taşıma formatı
+Yeni dışa aktarma biçimi `.gkte`dir.
 
-tek arşivde taşır.
+GKTE:
+- proje verisini,
+- fotoğraf dosyalarını,
+- format ve veri şeması sürüm bilgisini,
+- platform bağımsız manifest metadata'sını
 
-Restore mevcut projeyi ezmez. Kimlikler yeniden eşlenir ve bağımsız proje kopyası oluşturulur.
+tek dosyada taşır.
+
+Format ham Room/SQLite veritabanı değildir. Bu bilinçli bir karardır: aynı dosya gelecekteki Windows masaüstü uygulaması tarafından Android bağımlılığı olmadan okunup yazılabilmelidir.
+
+Android:
+- Proje ekranından GKTE üretir.
+- WhatsApp kuruluysa belgeyi doğrudan WhatsApp paylaşımına verir; yoksa sistem paylaşım menüsüne düşer.
+- `.gkte` dosyasını ACTION_VIEW ile açabilir.
+- İçe aktarılan projeyi mevcut projeyi ezmeden bağımsız kopya olarak açar.
+
+Eski `.sitepack` yalnız geriye dönük reader uyumluluğu için içe aktarılabilir. Yeni export üretilmez.
+
+Normatif format: `docs/GKTE_FORMAT.md`.
 
 ## Offline-first
 Room yerel kaynak-of-truth'tur. Temel saha akışı, rapor üretimi ve yedekleme internet olmadan çalışır.
@@ -127,7 +140,7 @@ Kod tarafındaki v0 özellik sözleşmesi tamamlanmıştır. `main` merge önces
 Özellikle başarısız olmaması gerekenler:
 1. Fotoğrafın doğru imalata bağlanması
 2. Uygulama yeniden açıldığında verinin korunması
-3. PDF ve `.sitepack` export/restore akışlarının crash üretmemesi
+3. PDF ve `.gkte` export/import akışlarının crash üretmemesi
 4. Duplicate problem kodunun sessiz veri bozulması yaratmaması
 
 ## V0 dışında
