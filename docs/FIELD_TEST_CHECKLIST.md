@@ -78,6 +78,11 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Yatay kaydırma çalışır.
 - [ ] Durum sembolleri doğru görünür.
 - [ ] Kusurlu/ağır kusurlu/bloke ayrımı görünür.
+- [ ] Açık problem bulunan hücrelerde P / P<n> işareti görünür.
+- [ ] Blok tipi filtresi yalnız seçilen tipin bloklarını gösterir.
+- [ ] Açık problem / Kusurlu / Bloke / Devam / Bitti filtreleri doğru kayıtları gösterir.
+- [ ] Filtre sonucu yoksa boş durum mesajı gösterilir.
+- [ ] Filtre temizlenince tüm matris geri gelir.
 - [ ] Bir hücreye dokununca doğru imalat detayına gider.
 
 ## 10. PDF raporu
