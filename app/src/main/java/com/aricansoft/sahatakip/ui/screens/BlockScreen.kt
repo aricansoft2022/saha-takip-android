@@ -166,7 +166,7 @@ private fun AddWorkItemDialog(
                     onClick={onCreate(name,tooltip.ifBlank{null})},
                     enabled=name.isNotBlank(),
                     modifier=Modifier.padding(top=8.dp)
-                ){Text("Yeni tanımla ve GK/GB/A bloğa ekle")}
+                ){Text("Yeni tanımla ve bu bloğa ekle")}
             }
         },
         confirmButton={},

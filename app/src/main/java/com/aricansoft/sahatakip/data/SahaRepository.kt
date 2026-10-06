@@ -2,6 +2,7 @@ package com.aricansoft.sahatakip.data
 
 import com.aricansoft.sahatakip.data.db.*
 import com.aricansoft.sahatakip.data.model.*
+import java.util.Locale
 import java.util.UUID
 
 class SahaRepository(private val dao:SahaDao){
@@ -77,7 +78,7 @@ class SahaRepository(private val dao:SahaDao){
         tooltip:String?=null,
         includeInReport:Boolean=true
     ){
-        val normalized=code.trim().uppercase()
+        val normalized=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
         val existing=dao.getProblemDefinitionByCode(projectId,normalized)
         val def=existing ?: ProblemDefinitionEntity(
             id=UUID.randomUUID().toString(),
