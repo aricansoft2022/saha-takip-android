@@ -18,6 +18,7 @@ class SahaRepository(private val dao:SahaDao){
     fun observeProblemRecords(blockWorkItemId:String)=dao.observeProblemRecords(blockWorkItemId)
     fun observeNotes(blockWorkItemId:String)=dao.observeNotes(blockWorkItemId)
     fun observePhotos(blockWorkItemId:String)=dao.observePhotos(blockWorkItemId)
+    fun observeFindingPhotos(problemRecordId:String)=dao.observeFindingPhotos(problemRecordId)
     fun observeBlockAttributes(blockId:String)=dao.observeBlockAttributes(blockId)
     fun observeBlockAttributeDefinitions(projectId:String)=dao.observeBlockAttributeDefinitions(projectId)
     fun observeProjectMatrixRows(projectId:String)=dao.observeProjectMatrixRows(projectId)
@@ -286,10 +287,29 @@ class SahaRepository(private val dao:SahaDao){
         )
     }
 
-    suspend fun addPhoto(blockWorkItemId:String,uri:String,includeInReport:Boolean=true){
+    suspend fun addPhoto(
+        blockWorkItemId:String,
+        uri:String,
+        includeInReport:Boolean=true,
+        problemRecordId:String?=null
+    ){
         val now=System.currentTimeMillis()
-        dao.insertPhoto(PhotoEntity(UUID.randomUUID().toString(),blockWorkItemId,uri,includeInReport=includeInReport,createdAt=now))
-        audit(blockWorkItemId,AuditEventType.PHOTO_ADDED,"Fotoğraf eklendi",now)
+        dao.insertPhoto(
+            PhotoEntity(
+                id=UUID.randomUUID().toString(),
+                blockWorkItemId=blockWorkItemId,
+                problemRecordId=problemRecordId,
+                localUri=uri,
+                includeInReport=includeInReport,
+                createdAt=now
+            )
+        )
+        audit(
+            blockWorkItemId,
+            AuditEventType.PHOTO_ADDED,
+            if(problemRecordId==null)"İmalat fotoğrafı eklendi" else "Problem/avantaj kanıt fotoğrafı eklendi",
+            now
+        )
     }
 
     suspend fun setProblemReportInclusion(id:String,include:Boolean)=
