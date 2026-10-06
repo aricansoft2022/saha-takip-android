@@ -38,7 +38,7 @@ Required v1 fields:
   "format": "GKTE",
   "formatVersion": 1,
   "minReaderVersion": 1,
-  "databaseVersion": 2,
+  "databaseVersion": 3,
   "fileExtension": ".gkte",
   "mimeType": "application/vnd.aricansoft.gkte",
   "encoding": "UTF-8",
@@ -111,7 +111,14 @@ For portability, exported photo rows carry an empty `localUri`. The binary asset
 
 `photos/<photo-id>.jpg`
 
-On import, each platform creates its own local file/URI reference.
+A photo row may contain:
+
+- `blockWorkItemId` — always present;
+- `problemRecordId` — nullable. When present, the photo is evidence belonging to that exact problem/advantage record.
+
+There is no format-level photo-count limit per finding.
+
+On import, each platform creates its own local file/URI reference and must preserve the optional `problemRecordId` relationship.
 
 A future Windows reader must therefore use the photo ID + `photos/` convention, not Android URI semantics.
 
