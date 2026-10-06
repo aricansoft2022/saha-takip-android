@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 class SahaTakipApplication:Application(){
     val database:SahaDatabase by lazy{
         Room.databaseBuilder(this,SahaDatabase::class.java,"saha-takip.db")
-            .addMigrations(SahaDatabase.MIGRATION_1_2)
+            .addMigrations(SahaDatabase.MIGRATION_1_2,SahaDatabase.MIGRATION_2_3)
             .build()
     }
     val repository:SahaRepository by lazy{SahaRepository(database.sahaDao())}
