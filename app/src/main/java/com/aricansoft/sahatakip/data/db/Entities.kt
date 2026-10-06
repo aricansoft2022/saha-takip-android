@@ -89,6 +89,10 @@ data class ProblemRecordEntity(
     val problemDefinitionId: String,
     val status: ProblemRecordStatus = ProblemRecordStatus.OPEN,
     val note: String? = null,
+    val specificDescription: String? = null,
+    val floor: String? = null,
+    val unitNumber: String? = null,
+    val unitName: String? = null,
     val includeInReport: Boolean = true,
     val createdAt: Long,
     val closedAt: Long? = null
