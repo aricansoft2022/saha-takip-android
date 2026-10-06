@@ -85,17 +85,17 @@ abstract class SahaDatabase:RoomDatabase(){
 
         val MIGRATION_2_3=object:Migration(2,3){
             override fun migrate(db:SupportSQLiteDatabase){
-                db.execSQL("ALTER TABLE photos ADD COLUMN problemRecordId TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE photos ADD COLUMN problemRecordId TEXT")
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_photos_problemRecordId ON photos(problemRecordId)")
             }
         }
 
         val MIGRATION_3_4=object:Migration(3,4){
             override fun migrate(db:SupportSQLiteDatabase){
-                db.execSQL("ALTER TABLE problem_records ADD COLUMN specificDescription TEXT DEFAULT NULL")
-                db.execSQL("ALTER TABLE problem_records ADD COLUMN floor TEXT DEFAULT NULL")
-                db.execSQL("ALTER TABLE problem_records ADD COLUMN unitNumber TEXT DEFAULT NULL")
-                db.execSQL("ALTER TABLE problem_records ADD COLUMN unitName TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE problem_records ADD COLUMN specificDescription TEXT")
+                db.execSQL("ALTER TABLE problem_records ADD COLUMN floor TEXT")
+                db.execSQL("ALTER TABLE problem_records ADD COLUMN unitNumber TEXT")
+                db.execSQL("ALTER TABLE problem_records ADD COLUMN unitName TEXT")
             }
         }
     }
