@@ -196,11 +196,12 @@ fun WorkItemDetailScreen(
                 records=problems,
                 photoEnabled=photoContext!=null,
                 onTakePhoto={recordId->
-                    val pc=photoContext ?: return@FindingSection
-                    val pending=PhotoStore.create(context,pc)
-                    pendingPhoto=pending
-                    pendingFindingRecordId=recordId
-                    camera.launch(pending.uri)
+                    photoContext?.let{pc->
+                        val pending=PhotoStore.create(context,pc)
+                        pendingPhoto=pending
+                        pendingFindingRecordId=recordId
+                        camera.launch(pending.uri)
+                    }
                 },
                 onTogglePhotoReport={id,checked->
                     scope.launch{repository.setPhotoReportInclusion(id,checked)}
@@ -216,11 +217,12 @@ fun WorkItemDetailScreen(
                 records=advantages,
                 photoEnabled=photoContext!=null,
                 onTakePhoto={recordId->
-                    val pc=photoContext ?: return@FindingSection
-                    val pending=PhotoStore.create(context,pc)
-                    pendingPhoto=pending
-                    pendingFindingRecordId=recordId
-                    camera.launch(pending.uri)
+                    photoContext?.let{pc->
+                        val pending=PhotoStore.create(context,pc)
+                        pendingPhoto=pending
+                        pendingFindingRecordId=recordId
+                        camera.launch(pending.uri)
+                    }
                 },
                 onTogglePhotoReport={id,checked->
                     scope.launch{repository.setPhotoReportInclusion(id,checked)}
