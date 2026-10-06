@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.WorkItemDefinitionEntity
 import com.aricansoft.sahatakip.data.model.QualityStatus
+import com.aricansoft.sahatakip.data.model.WorkItemScope
 import com.aricansoft.sahatakip.ui.InfoTooltip
 import kotlinx.coroutines.launch
 
@@ -114,12 +115,12 @@ fun BlockScreen(
             definitions=definitions,
             attachedIds=workItems.map{it.workItemDefinitionId}.toSet(),
             onDismiss={showAdd=false},
-            onAttach={id->
-                scope.launch{repository.attachWorkItem(blockId,id)}
+            onAttach={id,itemScope->
+                scope.launch{repository.attachWorkItem(blockId,id,itemScope)}
                 showAdd=false
             },
-            onCreate={name,tooltip->
-                scope.launch{repository.createWorkItemAndAttach(blockId,projectId,name,tooltip)}
+            onCreate={name,tooltip,itemScope->
+                scope.launch{repository.createWorkItemAndAttach(blockId,projectId,name,tooltip,itemScope)}
                 showAdd=false
             }
         )
@@ -131,24 +132,42 @@ private fun AddWorkItemDialog(
     definitions:List<WorkItemDefinitionEntity>,
     attachedIds:Set<String>,
     onDismiss:()->Unit,
-    onAttach:(String)->Unit,
-    onCreate:(String,String?)->Unit
+    onAttach:(String,WorkItemScope)->Unit,
+    onCreate:(String,String?,WorkItemScope)->Unit
 ){
     var name by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
+    var scope by remember{mutableStateOf(WorkItemScope.THIS_BLOCK)}
+
     AlertDialog(
         onDismissRequest=onDismiss,
         title={Text("İmalat ekle")},
         text={
             Column(
-                Modifier.heightIn(max=520.dp).verticalScroll(rememberScrollState())
+                Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState())
             ){
+                Text("Kapsam",style=MaterialTheme.typography.labelLarge)
+                WorkItemScope.entries.forEach{option->
+                    Row(
+                        Modifier.fillMaxWidth().clickable{scope=option}.padding(vertical=2.dp),
+                        verticalAlignment=Alignment.CenterVertically
+                    ){
+                        RadioButton(selected=scope==option,onClick={scope=option})
+                        Text(option.label)
+                    }
+                }
+
+                HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("Mevcut tanımlar",style=MaterialTheme.typography.labelLarge)
-                definitions.filterNot{it.id in attachedIds}.forEach{def->
-                    TextButton(onClick={onAttach(def.id)},modifier=Modifier.fillMaxWidth()){
+                definitions.filterNot{it.id in attachedIds && scope==WorkItemScope.THIS_BLOCK}.forEach{def->
+                    TextButton(
+                        onClick={onAttach(def.id,scope)},
+                        modifier=Modifier.fillMaxWidth()
+                    ){
                         Text(def.name,Modifier.fillMaxWidth())
                     }
                 }
+
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("On the fly yeni tanım",style=MaterialTheme.typography.labelLarge)
                 OutlinedTextField(
@@ -164,10 +183,10 @@ private fun AddWorkItemDialog(
                     modifier=Modifier.fillMaxWidth()
                 )
                 Button(
-                    onClick={onCreate(name,tooltip.ifBlank{null})},
+                    onClick={onCreate(name,tooltip.ifBlank{null},scope)},
                     enabled=name.isNotBlank(),
                     modifier=Modifier.padding(top=8.dp)
-                ){Text("Yeni tanımla ve bu bloğa ekle")}
+                ){Text("Tanımla ve seçili kapsama ekle")}
             }
         },
         confirmButton={},

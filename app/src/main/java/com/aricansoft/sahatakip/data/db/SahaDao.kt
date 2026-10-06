@@ -52,6 +52,15 @@ interface SahaDao {
     @Query("SELECT * FROM blocks WHERE id=:id")
     suspend fun getBlock(id:String):BlockEntity?
 
+    @Query("SELECT * FROM blocks WHERE blockTypeId=:blockTypeId ORDER BY sequence")
+    suspend fun getBlocksForType(blockTypeId:String):List<BlockEntity>
+
+    @Query("SELECT * FROM blocks WHERE projectId=:projectId ORDER BY blockTypeId, sequence")
+    suspend fun getBlocksForProject(projectId:String):List<BlockEntity>
+
+    @Query("SELECT * FROM block_types WHERE projectId=:projectId ORDER BY code")
+    suspend fun getBlockTypesForProject(projectId:String):List<BlockTypeEntity>
+
     @Query("SELECT * FROM block_types WHERE id=:id")
     suspend fun getBlockType(id:String):BlockTypeEntity?
 

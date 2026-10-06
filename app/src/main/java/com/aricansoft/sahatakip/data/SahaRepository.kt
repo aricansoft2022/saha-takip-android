@@ -28,18 +28,51 @@ class SahaRepository(private val dao:SahaDao){
     suspend fun setControl(id:String,value:ControlStatus)=mutateWorkItem(id,"Kontrol: "+value.label){copy(controlStatus=value)}
     suspend fun setBlocked(id:String,value:Boolean)=mutateWorkItem(id,if(value)"Bloke edildi" else "Bloke kaldırıldı"){copy(isBlocked=value)}
 
-    suspend fun attachWorkItem(blockId:String,definitionId:String){
+    suspend fun attachWorkItem(
+        sourceBlockId:String,
+        definitionId:String,
+        scope:WorkItemScope=WorkItemScope.THIS_BLOCK
+    ){
+        val sourceBlock=dao.getBlock(sourceBlockId) ?: return
+        val targetBlocks=when(scope){
+            WorkItemScope.THIS_BLOCK -> listOf(sourceBlock)
+            WorkItemScope.BLOCK_TYPE -> dao.getBlocksForType(sourceBlock.blockTypeId)
+            WorkItemScope.PROJECT -> dao.getBlocksForProject(sourceBlock.projectId)
+        }
         val now=System.currentTimeMillis()
-        dao.insertBlockWorkItems(listOf(BlockWorkItemEntity(
-            id="bwi-"+UUID.randomUUID(),
-            blockId=blockId,
-            workItemDefinitionId=definitionId,
-            createdAt=now,
-            updatedAt=now
-        )))
+        dao.insertBlockWorkItems(targetBlocks.map{block->
+            BlockWorkItemEntity(
+                id="bwi-"+UUID.randomUUID(),
+                blockId=block.id,
+                workItemDefinitionId=definitionId,
+                createdAt=now,
+                updatedAt=now
+            )
+        })
+
+        val templateTypes=when(scope){
+            WorkItemScope.THIS_BLOCK -> emptyList()
+            WorkItemScope.BLOCK_TYPE -> listOf(sourceBlock.blockTypeId)
+            WorkItemScope.PROJECT -> dao.getBlockTypesForProject(sourceBlock.projectId).map{it.id}
+        }
+        if(templateTypes.isNotEmpty()){
+            dao.insertBlockTypeWorkItems(templateTypes.map{
+                BlockTypeWorkItemEntity(
+                    blockTypeId=it,
+                    workItemDefinitionId=definitionId,
+                    sortOrder=9_999
+                )
+            })
+        }
     }
 
-    suspend fun createWorkItemAndAttach(blockId:String,projectId:String,name:String,tooltip:String?):WorkItemDefinitionEntity{
+    suspend fun createWorkItemAndAttach(
+        blockId:String,
+        projectId:String,
+        name:String,
+        tooltip:String?,
+        scope:WorkItemScope
+    ):WorkItemDefinitionEntity{
         val item=WorkItemDefinitionEntity(
             id="wi-"+UUID.randomUUID(),
             projectId=projectId,
@@ -47,7 +80,7 @@ class SahaRepository(private val dao:SahaDao){
             tooltip=tooltip?.trim()?.ifBlank{null}
         )
         dao.insertWorkItemDefinitions(listOf(item))
-        attachWorkItem(blockId,item.id)
+        attachWorkItem(blockId,item.id,scope)
         return item
     }
 

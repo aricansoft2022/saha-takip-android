@@ -20,6 +20,12 @@ enum class ControlStatus(val label: String) {
     ACCEPTED("Kabul")
 }
 
+enum class WorkItemScope(val label: String) {
+    THIS_BLOCK("Yalnız bu blok"),
+    BLOCK_TYPE("Aynı blok tipindeki tüm bloklar"),
+    PROJECT("Projedeki tüm bloklar")
+}
+
 enum class ProblemRecordStatus {
     OPEN,
     CLOSED
