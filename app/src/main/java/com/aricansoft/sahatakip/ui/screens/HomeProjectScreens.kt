@@ -57,7 +57,7 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                     onProject(projectId)
                 }.onFailure{
                     importing=false
-                    snackbar.showSnackbar("Yedek içe aktarılamadı: "+(it.message ?: "Bilinmeyen hata"))
+                    snackbar.showSnackbar("GKTE içe aktarılamadı: "+(it.message ?: "Bilinmeyen hata"))
                 }
             }
         }
