@@ -190,13 +190,17 @@ class SahaRepository(private val dao:SahaDao){
         projectId:String,
         name:String,
         tooltip:String?,
-        scope:WorkItemScope
+        scope:WorkItemScope,
+        kind:WorkItemKind=WorkItemKind.ELECTRICAL
     ):WorkItemDefinitionEntity{
+        val cleanName=name.trim()
+        require(cleanName.isNotBlank()){"İmalat adı boş olamaz."}
         val item=WorkItemDefinitionEntity(
             id="wi-"+UUID.randomUUID(),
             projectId=projectId,
-            name=name.trim(),
-            tooltip=tooltip?.trim()?.ifBlank{null}
+            name=cleanName,
+            tooltip=tooltip?.trim()?.ifBlank{null},
+            kind=kind
         )
         dao.insertWorkItemDefinitions(listOf(item))
         attachWorkItem(blockId,item.id,scope)
@@ -209,7 +213,14 @@ class SahaRepository(private val dao:SahaDao){
         audit(blockWorkItemId,AuditEventType.NOTE_ADDED,"Not eklendi",now)
     }
 
-    suspend fun attachProblem(blockWorkItemId:String,problemDefinitionId:String,note:String?=null,includeInReport:Boolean=true){
+    suspend fun attachProblem(
+        blockWorkItemId:String,
+        problemDefinitionId:String,
+        note:String?=null,
+        includeInReport:Boolean=true
+    ){
+        val definition=dao.getProblemDefinition(problemDefinitionId)
+            ?: error("Problem/avantaj tanımı bulunamadı.")
         val now=System.currentTimeMillis()
         dao.insertProblemRecord(ProblemRecordEntity(
             id=UUID.randomUUID().toString(),
@@ -219,7 +230,17 @@ class SahaRepository(private val dao:SahaDao){
             includeInReport=includeInReport,
             createdAt=now
         ))
-        audit(blockWorkItemId,AuditEventType.PROBLEM_OPENED,"Problem eklendi",now)
+        val event=if(definition.kind==FindingKind.ADVANTAGE){
+            AuditEventType.ADVANTAGE_OPENED
+        }else{
+            AuditEventType.PROBLEM_OPENED
+        }
+        audit(
+            blockWorkItemId,
+            event,
+            if(definition.kind==FindingKind.ADVANTAGE)"Avantaj eklendi" else "Problem eklendi",
+            now
+        )
     }
 
     suspend fun createProblemAndAttach(
@@ -228,16 +249,23 @@ class SahaRepository(private val dao:SahaDao){
         code:String,
         title:String,
         tooltip:String?=null,
-        includeInReport:Boolean=true
+        includeInReport:Boolean=true,
+        kind:FindingKind=FindingKind.PROBLEM
     ){
         val normalized=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
+        require(normalized.isNotBlank()){"Kod boş olamaz."}
+        require(title.trim().isNotBlank()){"Tanım boş olamaz."}
         val existing=dao.getProblemDefinitionByCode(projectId,normalized)
+        if(existing!=null && existing.kind!=kind){
+            error(normalized+" kodu zaten "+existing.kind.label.lowercase(Locale.forLanguageTag("tr-TR"))+" olarak tanımlı.")
+        }
         val def=existing ?: ProblemDefinitionEntity(
             id=UUID.randomUUID().toString(),
             projectId=projectId,
             code=normalized,
             title=title.trim(),
-            tooltip=tooltip?.trim()?.ifBlank{null}
+            tooltip=tooltip?.trim()?.ifBlank{null},
+            kind=kind
         ).also{dao.insertProblemDefinition(it)}
         attachProblem(blockWorkItemId,def.id,includeInReport=includeInReport)
     }
@@ -245,9 +273,16 @@ class SahaRepository(private val dao:SahaDao){
     suspend fun closeProblem(recordId:String){
         val record=dao.getProblemRecord(recordId) ?: return
         if(record.status==ProblemRecordStatus.CLOSED) return
+        val definition=dao.getProblemDefinition(record.problemDefinitionId)
         val now=System.currentTimeMillis()
         dao.updateProblemRecord(record.copy(status=ProblemRecordStatus.CLOSED,closedAt=now))
-        audit(record.blockWorkItemId,AuditEventType.PROBLEM_CLOSED,"Problem kapatıldı",now)
+        val isAdvantage=definition?.kind==FindingKind.ADVANTAGE
+        audit(
+            record.blockWorkItemId,
+            if(isAdvantage)AuditEventType.ADVANTAGE_CLOSED else AuditEventType.PROBLEM_CLOSED,
+            if(isAdvantage)"Avantaj kapatıldı" else "Problem kapatıldı",
+            now
+        )
     }
 
     suspend fun addPhoto(blockWorkItemId:String,uri:String,includeInReport:Boolean=true){
