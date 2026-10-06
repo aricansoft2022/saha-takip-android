@@ -48,6 +48,17 @@ data class BlockAttributeRow(
 )
 data class PhotoContextRow(val projectName:String,val blockCode:String,val workItemName:String)
 
+data class ProjectQuickStatusRow(
+    val projectId:String,
+    val totalWorkItemCount:Int,
+    val inProgressCount:Int,
+    val finishedCount:Int,
+    val defectiveCount:Int,
+    val blockedCount:Int,
+    val openProblemCount:Int,
+    val openAdvantageCount:Int
+)
+
 data class ReportWorkItemRow(
     val blockWorkItemId:String,
     val blockCode:String,
@@ -92,6 +103,65 @@ interface SahaDao {
 
     @Query("SELECT * FROM projects WHERE id=:id")
     suspend fun getProject(id:String):ProjectEntity?
+
+    @Query("""
+        SELECT
+            p.id AS projectId,
+            (
+                SELECT COUNT(*)
+                FROM block_work_items bwi
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id
+            ) AS totalWorkItemCount,
+            (
+                SELECT COUNT(*)
+                FROM block_work_items bwi
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id AND bwi.progressStatus='IN_PROGRESS'
+            ) AS inProgressCount,
+            (
+                SELECT COUNT(*)
+                FROM block_work_items bwi
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id AND bwi.progressStatus='FINISHED'
+            ) AS finishedCount,
+            (
+                SELECT COUNT(*)
+                FROM block_work_items bwi
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id
+                  AND bwi.qualityStatus IN ('DEFECTIVE','CRITICAL_DEFECT')
+            ) AS defectiveCount,
+            (
+                SELECT COUNT(*)
+                FROM block_work_items bwi
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id AND bwi.isBlocked=1
+            ) AS blockedCount,
+            (
+                SELECT COUNT(*)
+                FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id
+                  AND pr.status='OPEN'
+                  AND pd.kind='PROBLEM'
+            ) AS openProblemCount,
+            (
+                SELECT COUNT(*)
+                FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id
+                  AND pr.status='OPEN'
+                  AND pd.kind='ADVANTAGE'
+            ) AS openAdvantageCount
+        FROM projects p
+        ORDER BY p.name
+    """)
+    fun observeProjectQuickStatuses():Flow<List<ProjectQuickStatusRow>>
 
     @Query("SELECT * FROM blocks WHERE projectId=:projectId ORDER BY blockTypeId, sequence")
     fun observeBlocks(projectId:String):Flow<List<BlockEntity>>
