@@ -102,6 +102,7 @@ object XlsxExporter {
         if(item.qualityStatus!=QualityStatus.NOT_EVALUATED) parts += item.qualityStatus.label
         if(item.controlStatus.label!="Kontrol edilmedi") parts += item.controlStatus.label
         if(item.isBlocked) parts += "Bloke"
+        if(item.openProblemCount>0) parts += "Açık problem: "+item.openProblemCount
         return parts.joinToString(" · ")
     }
 

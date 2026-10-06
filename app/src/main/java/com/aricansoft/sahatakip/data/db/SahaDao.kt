@@ -51,7 +51,8 @@ data class ReportWorkItemRow(
     val progressStatus:com.aricansoft.sahatakip.data.model.ProgressStatus,
     val qualityStatus:com.aricansoft.sahatakip.data.model.QualityStatus,
     val controlStatus:com.aricansoft.sahatakip.data.model.ControlStatus,
-    val isBlocked:Boolean
+    val isBlocked:Boolean,
+    val openProblemCount:Int
 )
 
 data class ReportProblemRow(
@@ -197,7 +198,9 @@ interface SahaDao {
 
     @Query("""
         SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
-               bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked
+               bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked,
+               (SELECT COUNT(*) FROM problem_records pr
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN') AS openProblemCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN block_types bt ON bt.id=b.blockTypeId
@@ -209,7 +212,9 @@ interface SahaDao {
 
     @Query("""
         SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
-               bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked
+               bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked,
+               (SELECT COUNT(*) FROM problem_records pr
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN') AS openProblemCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN block_types bt ON bt.id=b.blockTypeId

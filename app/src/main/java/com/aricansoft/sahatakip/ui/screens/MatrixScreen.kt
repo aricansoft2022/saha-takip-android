@@ -80,7 +80,7 @@ fun MatrixScreen(
             }
             Spacer(Modifier.height(16.dp))
             Text(
-                "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke",
+                "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem",
                 style=MaterialTheme.typography.bodySmall
             )
         }
@@ -136,12 +136,20 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
         ProgressStatus.NOT_STARTED -> "○"
         null -> ""
     }
-    val qualifier=when{
-        row==null -> ""
-        row.qualityStatus==QualityStatus.CRITICAL_DEFECT -> "!!"
-        row.qualityStatus==QualityStatus.DEFECTIVE -> "!"
-        row.isBlocked -> "B"
-        else -> ""
+    val qualifier=if(row==null){
+        ""
+    }else{
+        buildList{
+            when(row.qualityStatus){
+                QualityStatus.CRITICAL_DEFECT -> add("!!")
+                QualityStatus.DEFECTIVE -> add("!")
+                else -> Unit
+            }
+            if(row.isBlocked) add("B")
+            if(row.openProblemCount>0){
+                add(if(row.openProblemCount==1)"P" else "P"+row.openProblemCount)
+            }
+        }.joinToString(" ")
     }
 
     Surface(

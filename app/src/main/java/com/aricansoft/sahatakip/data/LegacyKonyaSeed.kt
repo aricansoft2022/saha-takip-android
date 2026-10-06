@@ -129,18 +129,17 @@ object LegacyKonyaSeed {
                 names.forEach{name->
                     val def=byName.getValue(name)
                     val state=states[block.code to name] ?: LegacyState()
-                    val problem=state.problemCode
                     add(BlockWorkItemEntity(
                         id=bwiId(block.code,name),
                         blockId=block.id,
                         workItemDefinitionId=def.id,
                         progressStatus=if(state.finished) ProgressStatus.FINISHED else ProgressStatus.NOT_STARTED,
-                        qualityStatus=when(problem){
-                            "E-1","E-2","E-3","B.H.","İŞL.H."->QualityStatus.DEFECTIVE
-                            else->QualityStatus.NOT_EVALUATED
-                        },
-                        controlStatus=if(problem=="İ.Y.") ControlStatus.CANNOT_CHECK else ControlStatus.NOT_CHECKED,
-                        isBlocked=problem=="L.İ.E.",
+                        // The legacy spreadsheet stores checkmarks and problem codes, not
+                        // independent quality/control/blocking axes. Preserve the source:
+                        // never invent those statuses from a problem code during migration.
+                        qualityStatus=QualityStatus.NOT_EVALUATED,
+                        controlStatus=ControlStatus.NOT_CHECKED,
+                        isBlocked=false,
                         createdAt=now,
                         updatedAt=now
                     ))
