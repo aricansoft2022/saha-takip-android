@@ -220,7 +220,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",3)
+            .put("databaseVersion",4)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
