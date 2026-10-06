@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
@@ -25,6 +26,7 @@ import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.data.model.WorkItemScope
 import com.aricansoft.sahatakip.ui.InfoTooltip
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,15 +225,22 @@ private fun AddWorkItemDialog(
     var name by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
     var search by remember{mutableStateOf("")}
+    var definitionsExpanded by remember{mutableStateOf(false)}
     var scope by remember{mutableStateOf(WorkItemScope.THIS_BLOCK)}
     var kind by remember{mutableStateOf(WorkItemKind.ELECTRICAL)}
+    val trLocale=remember{Locale.forLanguageTag("tr-TR")}
+    val normalizedSearch=search.trim().lowercase(trLocale)
     val visibleDefinitions=definitions
         .filterNot{it.id in attachedIds && scope==WorkItemScope.THIS_BLOCK}
         .filter{
-            search.isBlank() ||
-                it.name.contains(search,ignoreCase=true) ||
-                (it.code?.contains(search,ignoreCase=true)==true)
+            normalizedSearch.isBlank() ||
+                it.name.lowercase(trLocale).contains(normalizedSearch) ||
+                (it.code?.lowercase(trLocale)?.contains(normalizedSearch)==true)
         }
+        .sortedWith(
+            compareBy<WorkItemDefinitionEntity>{if(it.kind==WorkItemKind.ELECTRICAL)0 else 1}
+                .thenBy{it.name.lowercase(trLocale)}
+        )
 
     AlertDialog(
         onDismissRequest=onDismiss,
@@ -253,30 +262,82 @@ private fun AddWorkItemDialog(
 
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("Mevcut tanımlar",style=MaterialTheme.typography.labelLarge)
-                OutlinedTextField(
-                    value=search,
-                    onValueChange={search=it},
-                    label={Text("İmalat ara")},
-                    modifier=Modifier.fillMaxWidth(),
-                    singleLine=true
-                )
-                visibleDefinitions.forEach{def->
-                    TextButton(
-                        onClick={onAttach(def.id,scope)},
+                Box(Modifier.fillMaxWidth()){
+                    OutlinedTextField(
+                        value=search,
+                        onValueChange={
+                            search=it
+                            definitionsExpanded=true
+                        },
+                        label={Text("Mevcut imalat ara / seç")},
+                        placeholder={Text("Dokununca tüm tanımlar açılır")},
+                        modifier=Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged{state->
+                                if(state.isFocused) definitionsExpanded=true
+                            },
+                        singleLine=true,
+                        trailingIcon={
+                            IconButton(onClick={definitionsExpanded=!definitionsExpanded}){
+                                Text(if(definitionsExpanded)"▲" else "▼")
+                            }
+                        }
+                    )
+                    DropdownMenu(
+                        expanded=definitionsExpanded,
+                        onDismissRequest={definitionsExpanded=false},
                         modifier=Modifier.fillMaxWidth()
                     ){
-                        Column(Modifier.fillMaxWidth()){
-                            Text(def.name)
-                            if(def.kind==WorkItemKind.RELATED_DISCIPLINE){
-                                Text(
-                                    "Alakadar başka disiplin",
-                                    style=MaterialTheme.typography.labelSmall,
-                                    color=MaterialTheme.colorScheme.tertiary
+                        if(visibleDefinitions.isEmpty()){
+                            DropdownMenuItem(
+                                text={
+                                    Text(
+                                        if(definitions.isEmpty())
+                                            "Henüz mevcut tanım yok"
+                                        else
+                                            "Eşleşen tanım yok"
+                                    )
+                                },
+                                onClick={},
+                                enabled=false
+                            )
+                        }else{
+                            visibleDefinitions.forEach{def->
+                                DropdownMenuItem(
+                                    text={
+                                        Column{
+                                            Text(def.name)
+                                            val detail=buildList{
+                                                def.code?.takeIf{it.isNotBlank()}?.let{add(it)}
+                                                if(def.kind==WorkItemKind.RELATED_DISCIPLINE){
+                                                    add("Alakadar başka disiplin")
+                                                }
+                                            }.joinToString(" · ")
+                                            if(detail.isNotBlank()){
+                                                Text(
+                                                    detail,
+                                                    style=MaterialTheme.typography.labelSmall,
+                                                    color=if(def.kind==WorkItemKind.RELATED_DISCIPLINE)
+                                                        MaterialTheme.colorScheme.tertiary
+                                                    else
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick={
+                                        definitionsExpanded=false
+                                        onAttach(def.id,scope)
+                                    }
                                 )
                             }
                         }
                     }
                 }
+                Text(
+                    "Arama imalat adı ve kodunda büyük/küçük harf duyarsız çalışır.",
+                    style=MaterialTheme.typography.bodySmall
+                )
 
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("On the fly yeni tanım",style=MaterialTheme.typography.labelLarge)
