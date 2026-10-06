@@ -62,8 +62,17 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] “Bitti + Kusurlu + Bloke” aynı anda saklanabilir.
 - [ ] Uygulama yeniden açılınca durumlar aynı kalır.
 
-## 7. Problem kataloğu
+## 7. Problem kataloğu ve saha bağlamı
 
+- [ ] Problem eklerken “Bu probleme özel tanım” girilebilir.
+- [ ] Kat girilebilir.
+- [ ] Mahal / daire / birim numarası girilebilir.
+- [ ] Mahal / daire / birim adı girilebilir.
+- [ ] Aynı katalog problemi iki farklı kat/daire bağlamıyla ayrı saha kaydı olarak eklenebilir.
+- [ ] Problem kartında özel tanım + kat + no + ad doğru görünür.
+- [ ] Aynı alanlar avantaj kaydında da çalışır.
+- [ ] PDF ve XLSX bu saha bağlamını korur.
+- [ ] GKTE export/import sonrası özel tanım ve konum alanları korunur.
 - [ ] Mevcut problem dropdown/arama ile bulunur ve eklenir.
 - [ ] On-the-fly yeni kod + tanım oluşturulur.
 - [ ] Yeni problem başka imalatta aramayla bulunabilir.
