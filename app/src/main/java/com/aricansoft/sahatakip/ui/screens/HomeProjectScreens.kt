@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.TableChart
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import com.aricansoft.sahatakip.SahaTakipApplication
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
 import com.aricansoft.sahatakip.report.ReportExporter
+import com.aricansoft.sahatakip.report.XlsxExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -141,7 +143,9 @@ fun ProjectScreen(
     val scope=rememberCoroutineScope()
     val snackbar=remember{SnackbarHostState()}
     var exporting by remember{mutableStateOf(false)}
+    var exportingXlsx by remember{mutableStateOf(false)}
     var backingUp by remember{mutableStateOf(false)}
+    var actionMenu by remember{mutableStateOf(false)}
     var showAddBlock by remember{mutableStateOf(false)}
     val blocks by remember(projectId){repository.observeBlocks(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
@@ -166,6 +170,31 @@ fun ProjectScreen(
                 snackbar.showSnackbar("Yedek oluşturulamadı: "+(it.message ?: "Bilinmeyen hata"))
             }
             backingUp=false
+        }
+    }
+
+    fun exportXlsx(){
+        if(exportingXlsx) return
+        exportingXlsx=true
+        scope.launch{
+            runCatching{
+                val snapshot=withContext(Dispatchers.IO){
+                    repository.getProjectReportSnapshot(projectId)
+                        ?: error("Proje bulunamadı.")
+                }
+                val uri=withContext(Dispatchers.IO){
+                    XlsxExporter.exportProject(context,snapshot)
+                }
+                val share=Intent(Intent.ACTION_SEND).apply{
+                    type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    putExtra(Intent.EXTRA_STREAM,uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(share,"Excel raporunu paylaş"))
+            }.onFailure{
+                snackbar.showSnackbar("Excel oluşturulamadı: "+(it.message ?: "Bilinmeyen hata"))
+            }
+            exportingXlsx=false
         }
     }
 
@@ -205,24 +234,48 @@ fun ProjectScreen(
                     }
                 },
                 actions={
-                    if(backingUp){
-                        CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp)
-                    }else{
-                        IconButton(onClick={exportBackup()}){
-                            Icon(Icons.Outlined.Archive,contentDescription="Sitepack yedeği oluştur")
-                        }
-                    }
                     IconButton(onClick=onMatrix){
                         Icon(Icons.Outlined.TableChart,contentDescription="İmalat matrisi")
                     }
-                    if(exporting){
+                    if(exporting || exportingXlsx || backingUp){
                         CircularProgressIndicator(
                             modifier=Modifier.size(22.dp),
                             strokeWidth=2.dp
                         )
                     }else{
-                        IconButton(onClick={exportPdf()}){
-                            Icon(Icons.Outlined.PictureAsPdf,contentDescription="PDF rapor oluştur")
+                        Box{
+                            IconButton(onClick={actionMenu=true}){
+                                Icon(Icons.Outlined.MoreVert,contentDescription="Dışa aktar")
+                            }
+                            DropdownMenu(
+                                expanded=actionMenu,
+                                onDismissRequest={actionMenu=false}
+                            ){
+                                DropdownMenuItem(
+                                    text={Text("PDF raporu")},
+                                    leadingIcon={Icon(Icons.Outlined.PictureAsPdf,contentDescription=null)},
+                                    onClick={
+                                        actionMenu=false
+                                        exportPdf()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text={Text("Excel / XLSX")},
+                                    leadingIcon={Icon(Icons.Outlined.TableChart,contentDescription=null)},
+                                    onClick={
+                                        actionMenu=false
+                                        exportXlsx()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text={Text("Sitepack yedeği")},
+                                    leadingIcon={Icon(Icons.Outlined.Archive,contentDescription=null)},
+                                    onClick={
+                                        actionMenu=false
+                                        exportBackup()
+                                    }
+                                )
+                            }
                         }
                     }
                 }
