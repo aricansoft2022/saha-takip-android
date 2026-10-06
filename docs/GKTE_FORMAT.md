@@ -38,7 +38,7 @@ Required v1 fields:
   "format": "GKTE",
   "formatVersion": 1,
   "minReaderVersion": 1,
-  "databaseVersion": 3,
+  "databaseVersion": 4,
   "fileExtension": ".gkte",
   "mimeType": "application/vnd.aricansoft.gkte",
   "encoding": "UTF-8",
@@ -80,6 +80,14 @@ Top level:
   }
 }
 ```
+
+Problem/advantage records in `problem_records` may also carry nullable event-specific fields:
+- `specificDescription`
+- `floor`
+- `unitNumber`
+- `unitName`
+
+These fields belong to the individual field record, not to the reusable problem definition.
 
 Current table collections:
 
