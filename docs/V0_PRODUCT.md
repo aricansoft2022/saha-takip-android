@@ -49,6 +49,14 @@ Tanım ile saha kaydı ayrı kavramlardır. Bulgu türü de bağımsızdır:
 
 Her ikisi de Açık / Kapalı yaşam döngüsüne sahiptir.
 Kodlar proje içinde tek anlam taşır; aynı kod sessizce başka türde yeniden yaratılamaz.
+
+Her saha problem/avantaj kaydı katalog tanımından bağımsız olarak şu olay-spesifik alanları taşıyabilir:
+- Bu kayda özel tanım
+- Kat
+- Mahal / daire / birim numarası
+- Mahal / daire / birim adı
+
+Örneğin katalogdaki `E-1 — Kolon sigortası ve KAKR yok` aynı kalırken saha kaydı `3. kat / Daire 12 / Antre / pano önü` bağlamını ayrıca saklayabilir.
 Her problem/avantaj kaydı rapora dahil/hariç bırakılabilir.
 
 Avantaj, "problem yok" demek değildir. Örneğin başka disiplinin henüz tamamlamadığı ve elektrik müdahalesi için alan bırakan bir iş açık avantaj olarak tutulabilir.
