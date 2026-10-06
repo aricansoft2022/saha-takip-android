@@ -219,6 +219,10 @@ class SahaRepository(private val dao:SahaDao){
         blockWorkItemId:String,
         problemDefinitionId:String,
         note:String?=null,
+        specificDescription:String?=null,
+        floor:String?=null,
+        unitNumber:String?=null,
+        unitName:String?=null,
         includeInReport:Boolean=true
     ){
         val definition=dao.getProblemDefinition(problemDefinitionId)
@@ -229,6 +233,10 @@ class SahaRepository(private val dao:SahaDao){
             blockWorkItemId=blockWorkItemId,
             problemDefinitionId=problemDefinitionId,
             note=note?.trim()?.ifBlank{null},
+            specificDescription=specificDescription?.trim()?.ifBlank{null},
+            floor=floor?.trim()?.ifBlank{null},
+            unitNumber=unitNumber?.trim()?.ifBlank{null},
+            unitName=unitName?.trim()?.ifBlank{null},
             includeInReport=includeInReport,
             createdAt=now
         ))
@@ -251,6 +259,10 @@ class SahaRepository(private val dao:SahaDao){
         code:String,
         title:String,
         tooltip:String?=null,
+        specificDescription:String?=null,
+        floor:String?=null,
+        unitNumber:String?=null,
+        unitName:String?=null,
         includeInReport:Boolean=true,
         kind:FindingKind=FindingKind.PROBLEM
     ){
@@ -269,7 +281,15 @@ class SahaRepository(private val dao:SahaDao){
             tooltip=tooltip?.trim()?.ifBlank{null},
             kind=kind
         ).also{dao.insertProblemDefinition(it)}
-        attachProblem(blockWorkItemId,def.id,includeInReport=includeInReport)
+        attachProblem(
+            blockWorkItemId=blockWorkItemId,
+            problemDefinitionId=def.id,
+            specificDescription=specificDescription,
+            floor=floor,
+            unitNumber=unitNumber,
+            unitName=unitName,
+            includeInReport=includeInReport
+        )
     }
 
     suspend fun closeProblem(recordId:String){
