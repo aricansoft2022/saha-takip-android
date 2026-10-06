@@ -73,6 +73,7 @@ data class ReportWorkItemRow(
 )
 
 data class ReportProblemRow(
+    val problemRecordId:String,
     val blockWorkItemId:String,
     val code:String,
     val title:String,
@@ -91,6 +92,7 @@ data class ReportNoteRow(
 
 data class ReportPhotoRow(
     val blockWorkItemId:String,
+    val problemRecordId:String?,
     val localUri:String,
     val caption:String?,
     val createdAt:Long
@@ -258,8 +260,11 @@ interface SahaDao {
     @Query("SELECT * FROM notes WHERE blockWorkItemId=:blockWorkItemId ORDER BY createdAt DESC")
     fun observeNotes(blockWorkItemId:String):Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM photos WHERE blockWorkItemId=:blockWorkItemId ORDER BY createdAt DESC")
+    @Query("SELECT * FROM photos WHERE blockWorkItemId=:blockWorkItemId AND problemRecordId IS NULL ORDER BY createdAt DESC")
     fun observePhotos(blockWorkItemId:String):Flow<List<PhotoEntity>>
+
+    @Query("SELECT * FROM photos WHERE problemRecordId=:problemRecordId ORDER BY createdAt DESC")
+    fun observeFindingPhotos(problemRecordId:String):Flow<List<PhotoEntity>>
 
     @Query("""
         SELECT bad.id AS attributeDefinitionId, bad.key, bad.name, bad.tooltip, bav.value
@@ -330,7 +335,7 @@ interface SahaDao {
     fun observeProjectMatrixRows(projectId:String):Flow<List<ReportWorkItemRow>>
 
     @Query("""
-        SELECT pr.blockWorkItemId, pd.code, pd.title, pd.kind, pr.note, pr.status, pr.createdAt, pr.closedAt
+        SELECT pr.id AS problemRecordId, pr.blockWorkItemId, pd.code, pd.title, pd.kind, pr.note, pr.status, pr.createdAt, pr.closedAt
         FROM problem_records pr
         JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
         JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
@@ -351,11 +356,20 @@ interface SahaDao {
     suspend fun getReportNotes(projectId:String):List<ReportNoteRow>
 
     @Query("""
-        SELECT ph.blockWorkItemId, ph.localUri, ph.caption, ph.createdAt
+        SELECT ph.blockWorkItemId, ph.problemRecordId, ph.localUri, ph.caption, ph.createdAt
         FROM photos ph
         JOIN block_work_items bwi ON bwi.id=ph.blockWorkItemId
         JOIN blocks b ON b.id=bwi.blockId
-        WHERE b.projectId=:projectId AND ph.includeInReport=1
+        WHERE b.projectId=:projectId
+          AND ph.includeInReport=1
+          AND (
+              ph.problemRecordId IS NULL OR
+              EXISTS(
+                  SELECT 1
+                  FROM problem_records pr
+                  WHERE pr.id=ph.problemRecordId AND pr.includeInReport=1
+              )
+          )
         ORDER BY ph.createdAt
     """)
     suspend fun getReportPhotos(projectId:String):List<ReportPhotoRow>
