@@ -34,6 +34,10 @@ data class ProblemRecordRow(
     val kind:com.aricansoft.sahatakip.data.model.FindingKind,
     val status:com.aricansoft.sahatakip.data.model.ProblemRecordStatus,
     val note:String?,
+    val specificDescription:String?,
+    val floor:String?,
+    val unitNumber:String?,
+    val unitName:String?,
     val includeInReport:Boolean,
     val createdAt:Long,
     val closedAt:Long?
@@ -79,6 +83,10 @@ data class ReportProblemRow(
     val title:String,
     val kind:com.aricansoft.sahatakip.data.model.FindingKind,
     val note:String?,
+    val specificDescription:String?,
+    val floor:String?,
+    val unitNumber:String?,
+    val unitName:String?,
     val status:com.aricansoft.sahatakip.data.model.ProblemRecordStatus,
     val createdAt:Long,
     val closedAt:Long?
@@ -246,7 +254,8 @@ interface SahaDao {
     @Query("""
         SELECT pr.id, pr.blockWorkItemId, pr.problemDefinitionId,
                pd.code, pd.title, pd.tooltip, pd.kind,
-               pr.status, pr.note, pr.includeInReport, pr.createdAt, pr.closedAt
+               pr.status, pr.note, pr.specificDescription, pr.floor, pr.unitNumber, pr.unitName,
+               pr.includeInReport, pr.createdAt, pr.closedAt
         FROM problem_records pr
         JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
         WHERE pr.blockWorkItemId=:blockWorkItemId
@@ -335,7 +344,9 @@ interface SahaDao {
     fun observeProjectMatrixRows(projectId:String):Flow<List<ReportWorkItemRow>>
 
     @Query("""
-        SELECT pr.id AS problemRecordId, pr.blockWorkItemId, pd.code, pd.title, pd.kind, pr.note, pr.status, pr.createdAt, pr.closedAt
+        SELECT pr.id AS problemRecordId, pr.blockWorkItemId, pd.code, pd.title, pd.kind,
+               pr.note, pr.specificDescription, pr.floor, pr.unitNumber, pr.unitName,
+               pr.status, pr.createdAt, pr.closedAt
         FROM problem_records pr
         JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
         JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
