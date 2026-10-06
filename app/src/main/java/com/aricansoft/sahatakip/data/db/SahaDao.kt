@@ -38,6 +38,39 @@ data class ProblemRecordRow(
 data class BlockAttributeRow(val key:String,val name:String,val tooltip:String?,val value:String)
 data class PhotoContextRow(val projectName:String,val blockCode:String,val workItemName:String)
 
+data class ReportWorkItemRow(
+    val blockWorkItemId:String,
+    val blockCode:String,
+    val workItemName:String,
+    val progressStatus:com.aricansoft.sahatakip.data.model.ProgressStatus,
+    val qualityStatus:com.aricansoft.sahatakip.data.model.QualityStatus,
+    val controlStatus:com.aricansoft.sahatakip.data.model.ControlStatus,
+    val isBlocked:Boolean
+)
+
+data class ReportProblemRow(
+    val blockWorkItemId:String,
+    val code:String,
+    val title:String,
+    val note:String?,
+    val status:com.aricansoft.sahatakip.data.model.ProblemRecordStatus,
+    val createdAt:Long,
+    val closedAt:Long?
+)
+
+data class ReportNoteRow(
+    val blockWorkItemId:String,
+    val text:String,
+    val createdAt:Long
+)
+
+data class ReportPhotoRow(
+    val blockWorkItemId:String,
+    val localUri:String,
+    val caption:String?,
+    val createdAt:Long
+)
+
 @Dao
 interface SahaDao {
     @Query("SELECT * FROM projects ORDER BY name")
@@ -140,6 +173,49 @@ interface SahaDao {
         WHERE bwi.id=:blockWorkItemId
     """)
     suspend fun getPhotoContext(blockWorkItemId:String):PhotoContextRow?
+
+    @Query("""
+        SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
+               bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked
+        FROM block_work_items bwi
+        JOIN blocks b ON b.id=bwi.blockId
+        JOIN block_types bt ON bt.id=b.blockTypeId
+        JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
+        WHERE b.projectId=:projectId
+        ORDER BY bt.code, b.sequence, wid.name
+    """)
+    suspend fun getReportWorkItems(projectId:String):List<ReportWorkItemRow>
+
+    @Query("""
+        SELECT pr.blockWorkItemId, pd.code, pd.title, pr.note, pr.status, pr.createdAt, pr.closedAt
+        FROM problem_records pr
+        JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+        JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
+        JOIN blocks b ON b.id=bwi.blockId
+        WHERE b.projectId=:projectId AND pr.includeInReport=1
+        ORDER BY pr.createdAt
+    """)
+    suspend fun getReportProblems(projectId:String):List<ReportProblemRow>
+
+    @Query("""
+        SELECT n.blockWorkItemId, n.text, n.createdAt
+        FROM notes n
+        JOIN block_work_items bwi ON bwi.id=n.blockWorkItemId
+        JOIN blocks b ON b.id=bwi.blockId
+        WHERE b.projectId=:projectId AND n.includeInReport=1
+        ORDER BY n.createdAt
+    """)
+    suspend fun getReportNotes(projectId:String):List<ReportNoteRow>
+
+    @Query("""
+        SELECT ph.blockWorkItemId, ph.localUri, ph.caption, ph.createdAt
+        FROM photos ph
+        JOIN block_work_items bwi ON bwi.id=ph.blockWorkItemId
+        JOIN blocks b ON b.id=bwi.blockId
+        WHERE b.projectId=:projectId AND ph.includeInReport=1
+        ORDER BY ph.createdAt
+    """)
+    suspend fun getReportPhotos(projectId:String):List<ReportPhotoRow>
 
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertProjects(items:List<ProjectEntity>)
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlockTypes(items:List<BlockTypeEntity>)

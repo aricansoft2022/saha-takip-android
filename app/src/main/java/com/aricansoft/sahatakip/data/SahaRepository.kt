@@ -2,6 +2,7 @@ package com.aricansoft.sahatakip.data
 
 import com.aricansoft.sahatakip.data.db.*
 import com.aricansoft.sahatakip.data.model.*
+import com.aricansoft.sahatakip.report.ProjectReportSnapshot
 import java.util.Locale
 import java.util.UUID
 
@@ -22,6 +23,19 @@ class SahaRepository(private val dao:SahaDao){
     suspend fun getWorkItemDefinition(id:String)=dao.getWorkItemDefinition(id)
     suspend fun getProjectIdForBlockWorkItem(id:String)=dao.getProjectIdForBlockWorkItem(id)
     suspend fun getPhotoContext(id:String)=dao.getPhotoContext(id)
+
+    suspend fun getProjectReportSnapshot(projectId:String):ProjectReportSnapshot?{
+        val project=dao.getProject(projectId) ?: return null
+        return ProjectReportSnapshot(
+            projectId=project.id,
+            projectName=project.name,
+            generatedAt=System.currentTimeMillis(),
+            workItems=dao.getReportWorkItems(projectId),
+            problems=dao.getReportProblems(projectId),
+            notes=dao.getReportNotes(projectId),
+            photos=dao.getReportPhotos(projectId)
+        )
+    }
 
     suspend fun setProgress(id:String,value:ProgressStatus)=mutateWorkItem(id,"İlerleme: "+value.label){copy(progressStatus=value)}
     suspend fun setQuality(id:String,value:QualityStatus)=mutateWorkItem(id,"Kalite: "+value.label){copy(qualityStatus=value)}
