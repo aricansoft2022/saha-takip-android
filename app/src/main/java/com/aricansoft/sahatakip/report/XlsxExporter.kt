@@ -26,6 +26,7 @@ object XlsxExporter {
         )
 
         val itemById=snapshot.workItems.associateBy{it.blockWorkItemId}
+        val findingById=snapshot.problems.associateBy{it.problemRecordId}
         val blockCodes=snapshot.workItems.map{it.blockCode}.distinct()
         val workRows=snapshot.workItems
             .groupBy{it.workItemName}
@@ -69,12 +70,19 @@ object XlsxExporter {
         }
 
         val photoRows=mutableListOf<List<String>>()
-        photoRows.add(listOf("Blok","İmalat","Tarih","Açıklama"))
+        photoRows.add(listOf("Blok","İmalat","Bağlı kayıt","Tarih","Açıklama"))
         snapshot.photos.forEach{photo->
             val item=itemById[photo.blockWorkItemId]
+            val finding=photo.problemRecordId?.let{findingById[it]}
+            val linkedRecord=when{
+                finding==null -> "Genel imalat fotoğrafı"
+                finding.kind==FindingKind.ADVANTAGE -> "Avantaj "+finding.code+" — "+finding.title
+                else -> "Problem "+finding.code+" — "+finding.title
+            }
             photoRows.add(listOf(
                 item?.blockCode.orEmpty(),
                 item?.workItemName.orEmpty(),
+                linkedRecord,
                 formatDate(photo.createdAt),
                 photo.caption.orEmpty()
             ))
