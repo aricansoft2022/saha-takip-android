@@ -69,11 +69,16 @@ Tarih/saat otomatik metadata olarak saklanır. Her notun rapora dahil bayrağı 
 Eski notun üstüne yazmak yerine yeni tarihçeli not eklemek varsayılandır.
 
 ## Fotoğraflar
-Fotoğraf aktif `blockWorkItemId` ile kaydedilir.
+Fotoğraflar iki seviyede tutulur:
 
-Örnek: **GK-9 → Daire Pano** ekranından kamera açılırsa fotoğraf çekildiği anda o imalat kaydına bağlanır. Bunu görüntü analiziyle tahmin etmeyiz; ekran bağlamı zaten kesin bilgiyi taşır.
+1. **Genel imalat fotoğrafı** — aktif `blockWorkItemId` ile bağlanır.
+2. **Problem/avantaj kanıt fotoğrafı** — hem aktif `blockWorkItemId` hem de ilgili `problemRecordId` ile bağlanır.
 
-Her fotoğrafın rapora dahil bayrağı vardır.
+Her problem ve her avantaj kaydına **sınırsız sayıda kanıt fotoğrafı** eklenebilir. Problem/avantaj kapatılmış olsa bile mevcut kanıt fotoğrafları korunur ve yeni kanıt eklenebilir.
+
+Örnek: **GK-9 → Daire Pano → E-1 problemi** içinden çekilen fotoğraf doğrudan E-1 saha kaydına bağlanır; başka problem veya avantaja karışmaz.
+
+Her fotoğrafın bağımsız “Rapora dahil” bayrağı vardır. PDF'de bulguya bağlı fotoğraflar ilgili problem/avantajın hemen altında gösterilir; XLSX Fotoğraflar sayfası fotoğrafın hangi bulguya bağlı olduğunu belirtir.
 
 ## Tooltip
 Blok tipi, imalat, problem ve blok parametresi tanımlarında kısa açıklama/tooltip alanı bulunur.
