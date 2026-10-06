@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.SahaTakipApplication
+import com.aricansoft.sahatakip.backup.GkteShare
+import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
 import com.aricansoft.sahatakip.report.ReportExporter
@@ -71,9 +73,14 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                         CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp)
                     }else{
                         IconButton(onClick={
-                            importLauncher.launch(arrayOf("application/zip","application/octet-stream","*/*"))
+                            importLauncher.launch(arrayOf(
+                                SitePackManager.GKTE_MIME,
+                                "application/octet-stream",
+                                "application/zip",
+                                "*/*"
+                            ))
                         }){
-                            Icon(Icons.Outlined.Unarchive,contentDescription="Sitepack içe aktar")
+                            Icon(Icons.Outlined.Unarchive,contentDescription="GKTE içe aktar")
                         }
                     }
                 }
@@ -159,16 +166,11 @@ fun ProjectScreen(
         scope.launch{
             runCatching{
                 val uri=withContext(Dispatchers.IO){
-                    app.sitePackManager.exportProject(projectId)
+                    app.sitePackManager.exportGkte(projectId)
                 }
-                val share=Intent(Intent.ACTION_SEND).apply{
-                    type="application/zip"
-                    putExtra(Intent.EXTRA_STREAM,uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                context.startActivity(Intent.createChooser(share,"Proje yedeğini paylaş"))
+                GkteShare.shareToWhatsApp(context,uri)
             }.onFailure{
-                snackbar.showSnackbar("Yedek oluşturulamadı: "+(it.message ?: "Bilinmeyen hata"))
+                snackbar.showSnackbar("GKTE oluşturulamadı: "+(it.message ?: "Bilinmeyen hata"))
             }
             backingUp=false
         }
@@ -269,7 +271,7 @@ fun ProjectScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text={Text("Sitepack yedeği")},
+                                    text={Text("GKTE / WhatsApp ile paylaş")},
                                     leadingIcon={Icon(Icons.Outlined.Archive,contentDescription=null)},
                                     onClick={
                                         actionMenu=false
