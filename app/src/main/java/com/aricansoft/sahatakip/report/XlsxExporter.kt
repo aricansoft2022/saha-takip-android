@@ -29,21 +29,21 @@ object XlsxExporter {
         val matrix=snapshot.workItems.associateBy{it.workItemName to it.blockCode}
 
         val matrixRows=mutableListOf<List<String>>()
-        matrixRows += listOf(snapshot.projectName)
-        matrixRows += listOf("Oluşturulma",formatDate(snapshot.generatedAt))
-        matrixRows += emptyList()
-        matrixRows += listOf("İmalat")+blockCodes
+        matrixRows.add(listOf(snapshot.projectName))
+        matrixRows.add(listOf("Oluşturulma",formatDate(snapshot.generatedAt)))
+        matrixRows.add(emptyList())
+        matrixRows.add(listOf("İmalat")+blockCodes)
         workNames.forEach{workName->
-            matrixRows += listOf(workName)+blockCodes.map{block->
+            matrixRows.add(listOf(workName)+blockCodes.map{block->
                 matrix[workName to block]?.let{statusText(it)} ?: ""
-            }
+            })
         }
 
         val problemRows=mutableListOf<List<String>>()
-        problemRows += listOf("Blok","İmalat","Kod","Tanım","Durum","Açılış","Kapanış","Not")
+        problemRows.add(listOf("Blok","İmalat","Kod","Tanım","Durum","Açılış","Kapanış","Not"))
         snapshot.problems.forEach{problem->
             val item=itemById[problem.blockWorkItemId]
-            problemRows += listOf(
+            problemRows.add(listOf(
                 item?.blockCode.orEmpty(),
                 item?.workItemName.orEmpty(),
                 problem.code,
@@ -52,31 +52,31 @@ object XlsxExporter {
                 formatDate(problem.createdAt),
                 problem.closedAt?.let{formatDate(it)} ?: "",
                 problem.note.orEmpty()
-            )
+            ))
         }
 
         val noteRows=mutableListOf<List<String>>()
-        noteRows += listOf("Blok","İmalat","Tarih","Not")
+        noteRows.add(listOf("Blok","İmalat","Tarih","Not"))
         snapshot.notes.forEach{note->
             val item=itemById[note.blockWorkItemId]
-            noteRows += listOf(
+            noteRows.add(listOf(
                 item?.blockCode.orEmpty(),
                 item?.workItemName.orEmpty(),
                 formatDate(note.createdAt),
                 note.text
-            )
+            ))
         }
 
         val photoRows=mutableListOf<List<String>>()
-        photoRows += listOf("Blok","İmalat","Tarih","Açıklama")
+        photoRows.add(listOf("Blok","İmalat","Tarih","Açıklama"))
         snapshot.photos.forEach{photo->
             val item=itemById[photo.blockWorkItemId]
-            photoRows += listOf(
+            photoRows.add(listOf(
                 item?.blockCode.orEmpty(),
                 item?.workItemName.orEmpty(),
                 formatDate(photo.createdAt),
                 photo.caption.orEmpty()
-            )
+            ))
         }
 
         ZipOutputStream(FileOutputStream(file).buffered()).use{zip->
