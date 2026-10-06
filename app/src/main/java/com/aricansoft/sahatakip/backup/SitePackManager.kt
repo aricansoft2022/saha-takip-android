@@ -220,7 +220,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",2)
+            .put("databaseVersion",3)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
@@ -399,6 +399,7 @@ class SitePackManager(
 
         replaceIds(tables.getJSONArray("photos"),"id",m.photos)
         replaceIds(tables.getJSONArray("photos"),"blockWorkItemId",m.blockWorkItems)
+        replaceIds(tables.getJSONArray("photos"),"problemRecordId",m.problemRecords)
 
         replaceIds(tables.getJSONArray("block_attribute_definitions"),"id",m.attributes)
         replaceIds(tables.getJSONArray("block_attribute_definitions"),"projectId",m.projects)
