@@ -4,8 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.aricansoft.sahatakip.BuildConfig
+import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
+import com.aricansoft.sahatakip.data.model.WorkItemKind
 import java.io.File
 import java.io.FileOutputStream
 import java.time.Instant
@@ -25,35 +27,34 @@ object XlsxExporter {
 
         val itemById=snapshot.workItems.associateBy{it.blockWorkItemId}
         val blockCodes=snapshot.workItems.map{it.blockCode}.distinct()
-        val workNames=snapshot.workItems.map{it.workItemName}.distinct().sorted()
+        val workRows=snapshot.workItems
+            .groupBy{it.workItemName}
+            .map{entry->entry.key to entry.value.first().workItemKind}
+            .sortedWith(
+                compareBy<Pair<String,WorkItemKind>>{if(it.second==WorkItemKind.ELECTRICAL)0 else 1}
+                    .thenBy{it.first}
+            )
         val matrix=snapshot.workItems.associateBy{it.workItemName to it.blockCode}
 
         val matrixRows=mutableListOf<List<String>>()
         matrixRows.add(listOf(snapshot.projectName))
         matrixRows.add(listOf("Oluşturulma",formatDate(snapshot.generatedAt)))
         matrixRows.add(emptyList())
-        matrixRows.add(listOf("İmalat")+blockCodes)
-        workNames.forEach{workName->
-            matrixRows.add(listOf(workName)+blockCodes.map{block->
-                matrix[workName to block]?.let{statusText(it)} ?: ""
-            })
+        matrixRows.add(listOf("İmalat / takip kalemi","Tür")+blockCodes)
+        workRows.forEach{work->
+            matrixRows.add(
+                listOf(
+                    work.first,
+                    if(work.second==WorkItemKind.RELATED_DISCIPLINE)"Alakadar başka disiplin" else "Elektrik"
+                )+
+                    blockCodes.map{block->
+                        matrix[work.first to block]?.let{statusText(it)} ?: ""
+                    }
+            )
         }
 
-        val problemRows=mutableListOf<List<String>>()
-        problemRows.add(listOf("Blok","İmalat","Kod","Tanım","Durum","Açılış","Kapanış","Not"))
-        snapshot.problems.forEach{problem->
-            val item=itemById[problem.blockWorkItemId]
-            problemRows.add(listOf(
-                item?.blockCode.orEmpty(),
-                item?.workItemName.orEmpty(),
-                problem.code,
-                problem.title,
-                if(problem.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı",
-                formatDate(problem.createdAt),
-                problem.closedAt?.let{formatDate(it)} ?: "",
-                problem.note.orEmpty()
-            ))
-        }
+        val problemRows=findingRows(snapshot,FindingKind.PROBLEM,itemById)
+        val advantageRows=findingRows(snapshot,FindingKind.ADVANTAGE,itemById)
 
         val noteRows=mutableListOf<List<String>>()
         noteRows.add(listOf("Blok","İmalat","Tarih","Not"))
@@ -86,8 +87,9 @@ object XlsxExporter {
             putText(zip,"xl/_rels/workbook.xml.rels",workbookRels())
             putText(zip,"xl/worksheets/sheet1.xml",worksheet(matrixRows))
             putText(zip,"xl/worksheets/sheet2.xml",worksheet(problemRows))
-            putText(zip,"xl/worksheets/sheet3.xml",worksheet(noteRows))
-            putText(zip,"xl/worksheets/sheet4.xml",worksheet(photoRows))
+            putText(zip,"xl/worksheets/sheet3.xml",worksheet(advantageRows))
+            putText(zip,"xl/worksheets/sheet4.xml",worksheet(noteRows))
+            putText(zip,"xl/worksheets/sheet5.xml",worksheet(photoRows))
         }
 
         return FileProvider.getUriForFile(
@@ -97,12 +99,37 @@ object XlsxExporter {
         )
     }
 
+    private fun findingRows(
+        snapshot:ProjectReportSnapshot,
+        kind:FindingKind,
+        itemById:Map<String,com.aricansoft.sahatakip.data.db.ReportWorkItemRow>
+    ):MutableList<List<String>>{
+        val rows=mutableListOf<List<String>>()
+        rows.add(listOf("Blok","İmalat","Kod","Tanım","Durum","Açılış","Kapanış","Not"))
+        snapshot.problems.filter{it.kind==kind}.forEach{finding->
+            val item=itemById[finding.blockWorkItemId]
+            rows.add(listOf(
+                item?.blockCode.orEmpty(),
+                item?.workItemName.orEmpty(),
+                finding.code,
+                finding.title,
+                if(finding.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı",
+                formatDate(finding.createdAt),
+                finding.closedAt?.let{formatDate(it)} ?: "",
+                finding.note.orEmpty()
+            ))
+        }
+        return rows
+    }
+
     private fun statusText(item:com.aricansoft.sahatakip.data.db.ReportWorkItemRow):String{
         val parts=mutableListOf(item.progressStatus.label)
+        if(item.workItemKind==WorkItemKind.RELATED_DISCIPLINE) parts += "Başka disiplin"
         if(item.qualityStatus!=QualityStatus.NOT_EVALUATED) parts += item.qualityStatus.label
         if(item.controlStatus.label!="Kontrol edilmedi") parts += item.controlStatus.label
         if(item.isBlocked) parts += "Bloke"
         if(item.openProblemCount>0) parts += "Açık problem: "+item.openProblemCount
+        if(item.openAdvantageCount>0) parts += "Açık avantaj: "+item.openAdvantageCount
         return parts.joinToString(" · ")
     }
 
@@ -134,6 +161,7 @@ object XlsxExporter {
   <Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet5.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
 </Types>"""
 
     private fun rootRels()="""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -147,8 +175,9 @@ object XlsxExporter {
   <sheets>
     <sheet name="İmalat Matrisi" sheetId="1" r:id="rId1"/>
     <sheet name="Problemler" sheetId="2" r:id="rId2"/>
-    <sheet name="Notlar" sheetId="3" r:id="rId3"/>
-    <sheet name="Fotoğraflar" sheetId="4" r:id="rId4"/>
+    <sheet name="Avantajlar" sheetId="3" r:id="rId3"/>
+    <sheet name="Notlar" sheetId="4" r:id="rId4"/>
+    <sheet name="Fotoğraflar" sheetId="5" r:id="rId5"/>
   </sheets>
 </workbook>"""
 
@@ -158,6 +187,7 @@ object XlsxExporter {
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>
   <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/>
+  <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet5.xml"/>
 </Relationships>"""
 
     private fun putText(zip:ZipOutputStream,path:String,text:String){
