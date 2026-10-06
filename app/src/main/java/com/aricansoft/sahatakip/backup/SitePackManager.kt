@@ -74,6 +74,7 @@ class SitePackManager(
             val root=JSONObject(dataFile.readText(Charsets.UTF_8))
             require(root.optInt("formatVersion")==1){"Desteklenmeyen .sitepack sürümü."}
             val tables=root.getJSONObject("tables")
+            normalizeKindsForImport(tables)
 
             val oldProject=singleId(tables,"projects")
             val newProject="project-"+UUID.randomUUID()
@@ -162,7 +163,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",1)
+            .put("databaseVersion",2)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
@@ -212,6 +213,32 @@ class SitePackManager(
                 }
             }
         } ?: error("Yedek dosyası açılamadı.")
+    }
+
+    private fun normalizeKindsForImport(tables:JSONObject){
+        val workItems=tables.getJSONArray("work_item_definitions")
+        for(i in 0 until workItems.length()){
+            val row=workItems.getJSONObject(i)
+            if(!row.has("kind") || row.isNull("kind")) row.put("kind","ELECTRICAL")
+            if(
+                row.optString("projectId")=="project-konya-444" &&
+                row.optString("name")=="Mutfak Fayans / Dolap"
+            ){
+                row.put("kind","RELATED_DISCIPLINE")
+            }
+        }
+
+        val definitions=tables.getJSONArray("problem_definitions")
+        for(i in 0 until definitions.length()){
+            val row=definitions.getJSONObject(i)
+            if(!row.has("kind") || row.isNull("kind")) row.put("kind","PROBLEM")
+            if(
+                row.optString("projectId")=="project-konya-444" &&
+                row.optString("code")=="L.İ.E."
+            ){
+                row.put("kind","ADVANTAGE")
+            }
+        }
     }
 
     private fun singleId(tables:JSONObject,table:String):String{
