@@ -187,6 +187,18 @@ interface SahaDao {
     suspend fun getReportWorkItems(projectId:String):List<ReportWorkItemRow>
 
     @Query("""
+        SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
+               bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked
+        FROM block_work_items bwi
+        JOIN blocks b ON b.id=bwi.blockId
+        JOIN block_types bt ON bt.id=b.blockTypeId
+        JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
+        WHERE b.projectId=:projectId
+        ORDER BY bt.code, b.sequence, wid.name
+    """)
+    fun observeProjectMatrixRows(projectId:String):Flow<List<ReportWorkItemRow>>
+
+    @Query("""
         SELECT pr.blockWorkItemId, pd.code, pd.title, pr.note, pr.status, pr.createdAt, pr.closedAt
         FROM problem_records pr
         JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId

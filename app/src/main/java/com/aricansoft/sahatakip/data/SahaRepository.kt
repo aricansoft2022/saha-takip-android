@@ -17,6 +17,7 @@ class SahaRepository(private val dao:SahaDao){
     fun observeNotes(blockWorkItemId:String)=dao.observeNotes(blockWorkItemId)
     fun observePhotos(blockWorkItemId:String)=dao.observePhotos(blockWorkItemId)
     fun observeBlockAttributes(blockId:String)=dao.observeBlockAttributes(blockId)
+    fun observeProjectMatrixRows(projectId:String)=dao.observeProjectMatrixRows(projectId)
 
     suspend fun getBlock(id:String)=dao.getBlock(id)
     suspend fun getBlockType(id:String)=dao.getBlockType(id)

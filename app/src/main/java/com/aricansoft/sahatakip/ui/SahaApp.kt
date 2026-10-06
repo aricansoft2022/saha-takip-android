@@ -9,6 +9,7 @@ import com.aricansoft.sahatakip.SahaTakipApplication
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.ui.screens.BlockScreen
 import com.aricansoft.sahatakip.ui.screens.HomeScreen
+import com.aricansoft.sahatakip.ui.screens.MatrixScreen
 import com.aricansoft.sahatakip.ui.screens.ProjectScreen
 import com.aricansoft.sahatakip.ui.screens.WorkItemDetailScreen
 
@@ -28,7 +29,17 @@ fun SahaApp(){
                 repository=repository,
                 projectId=projectId,
                 onBack={nav.popBackStack()},
-                onBlock={blockId->nav.navigate("block/"+projectId+"/"+blockId)}
+                onBlock={blockId->nav.navigate("block/"+projectId+"/"+blockId)},
+                onMatrix={nav.navigate("matrix/"+projectId)}
+            )
+        }
+        composable("matrix/{projectId}"){entry->
+            val projectId=requireNotNull(entry.arguments?.getString("projectId"))
+            MatrixScreen(
+                repository=repository,
+                projectId=projectId,
+                onBack={nav.popBackStack()},
+                onWorkItem={id->nav.navigate("work/"+id)}
             )
         }
         composable("block/{projectId}/{blockId}"){entry->

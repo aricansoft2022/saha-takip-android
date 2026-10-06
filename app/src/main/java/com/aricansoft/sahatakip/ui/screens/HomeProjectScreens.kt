@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,7 +68,8 @@ fun ProjectScreen(
     repository:SahaRepository,
     projectId:String,
     onBack:()->Unit,
-    onBlock:(String)->Unit
+    onBlock:(String)->Unit,
+    onMatrix:()->Unit
 ){
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
@@ -112,6 +114,9 @@ fun ProjectScreen(
                     }
                 },
                 actions={
+                    IconButton(onClick=onMatrix){
+                        Icon(Icons.Outlined.TableChart,contentDescription="İmalat matrisi")
+                    }
                     if(exporting){
                         CircularProgressIndicator(
                             modifier=Modifier.size(22.dp),
