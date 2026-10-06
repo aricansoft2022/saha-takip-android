@@ -26,6 +26,16 @@ enum class WorkItemScope(val label: String) {
     PROJECT("Projedeki tüm bloklar")
 }
 
+enum class WorkItemKind(val label:String) {
+    ELECTRICAL("Elektrik imalatı"),
+    RELATED_DISCIPLINE("Alakadar başka disiplin kalemi")
+}
+
+enum class FindingKind(val label:String) {
+    PROBLEM("Problem"),
+    ADVANTAGE("Avantaj")
+}
+
 enum class ProblemRecordStatus {
     OPEN,
     CLOSED
@@ -37,5 +47,7 @@ enum class AuditEventType {
     NOTE_ADDED,
     PROBLEM_OPENED,
     PROBLEM_CLOSED,
+    ADVANTAGE_OPENED,
+    ADVANTAGE_CLOSED,
     PHOTO_ADDED
 }
