@@ -92,9 +92,22 @@ object ReportExporter {
                         val label=if(finding.kind==FindingKind.ADVANTAGE)"Avantaj" else "Problem"
                         writer.bullet(
                             label+" "+finding.code+" — "+finding.title+" ["+state+"]"+
-                                (finding.note?.let{" — "+it} ?: "")+
                                 " ("+formatDate(finding.createdAt)+")"
                         )
+                        finding.specificDescription?.let{
+                            writer.paragraph("Özel tanım — "+it,indent=18f)
+                        }
+                        val location=buildList{
+                            finding.floor?.let{add("Kat: "+it)}
+                            finding.unitNumber?.let{add("No: "+it)}
+                            finding.unitName?.let{add("Mahal / daire / birim: "+it)}
+                        }.joinToString(" · ")
+                        if(location.isNotBlank()){
+                            writer.paragraph(location,indent=18f)
+                        }
+                        finding.note?.let{
+                            writer.paragraph("Not — "+it,indent=18f)
+                        }
                         findingPhotos[finding.problemRecordId].orEmpty().forEach{photo->
                             writer.paragraph(
                                 "Kanıt fotoğrafı — "+formatDate(photo.createdAt)+
