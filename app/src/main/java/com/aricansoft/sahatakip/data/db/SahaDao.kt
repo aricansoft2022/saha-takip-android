@@ -82,8 +82,14 @@ interface SahaDao {
     @Query("SELECT * FROM blocks WHERE projectId=:projectId ORDER BY blockTypeId, sequence")
     fun observeBlocks(projectId:String):Flow<List<BlockEntity>>
 
+    @Query("SELECT * FROM block_types WHERE projectId=:projectId ORDER BY code")
+    fun observeBlockTypes(projectId:String):Flow<List<BlockTypeEntity>>
+
     @Query("SELECT * FROM blocks WHERE id=:id")
     suspend fun getBlock(id:String):BlockEntity?
+
+    @Query("SELECT * FROM blocks WHERE projectId=:projectId AND code=:code LIMIT 1")
+    suspend fun getBlockByCode(projectId:String,code:String):BlockEntity?
 
     @Query("SELECT * FROM blocks WHERE blockTypeId=:blockTypeId ORDER BY sequence")
     suspend fun getBlocksForType(blockTypeId:String):List<BlockEntity>
@@ -93,6 +99,9 @@ interface SahaDao {
 
     @Query("SELECT * FROM block_types WHERE projectId=:projectId ORDER BY code")
     suspend fun getBlockTypesForProject(projectId:String):List<BlockTypeEntity>
+
+    @Query("SELECT * FROM block_types WHERE projectId=:projectId AND code=:code LIMIT 1")
+    suspend fun getBlockTypeByCode(projectId:String,code:String):BlockTypeEntity?
 
     @Query("SELECT * FROM block_types WHERE id=:id")
     suspend fun getBlockType(id:String):BlockTypeEntity?
@@ -114,6 +123,9 @@ interface SahaDao {
 
     @Query("SELECT * FROM block_work_items WHERE id=:id")
     suspend fun getBlockWorkItem(id:String):BlockWorkItemEntity?
+
+    @Query("SELECT workItemDefinitionId FROM block_type_work_items WHERE blockTypeId=:blockTypeId ORDER BY sortOrder")
+    suspend fun getTemplateWorkItemIds(blockTypeId:String):List<String>
 
     @Query("SELECT * FROM work_item_definitions WHERE id=:id")
     suspend fun getWorkItemDefinition(id:String):WorkItemDefinitionEntity?

@@ -9,6 +9,7 @@ import java.util.UUID
 class SahaRepository(private val dao:SahaDao){
     fun observeProjects()=dao.observeProjects()
     fun observeBlocks(projectId:String)=dao.observeBlocks(projectId)
+    fun observeBlockTypes(projectId:String)=dao.observeBlockTypes(projectId)
     fun observeBlockWorkItems(blockId:String)=dao.observeBlockWorkItems(blockId)
     fun observeBlockWorkItem(id:String)=dao.observeBlockWorkItem(id)
     fun observeWorkItemDefinitions(projectId:String)=dao.observeWorkItemDefinitions(projectId)
@@ -24,6 +25,72 @@ class SahaRepository(private val dao:SahaDao){
     suspend fun getWorkItemDefinition(id:String)=dao.getWorkItemDefinition(id)
     suspend fun getProjectIdForBlockWorkItem(id:String)=dao.getProjectIdForBlockWorkItem(id)
     suspend fun getPhotoContext(id:String)=dao.getPhotoContext(id)
+
+    suspend fun createProject(name:String):ProjectEntity{
+        val clean=name.trim()
+        require(clean.isNotBlank()){"Proje adı boş olamaz."}
+        val item=ProjectEntity(
+            id="project-"+UUID.randomUUID(),
+            name=clean,
+            createdAt=System.currentTimeMillis()
+        )
+        dao.insertProjects(listOf(item))
+        return item
+    }
+
+    suspend fun createBlockType(
+        projectId:String,
+        code:String,
+        name:String?,
+        tooltip:String?
+    ):BlockTypeEntity{
+        val normalized=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
+        require(normalized.isNotBlank()){"Blok tipi kodu boş olamaz."}
+        dao.getBlockTypeByCode(projectId,normalized)?.let{
+            error(normalized+" blok tipi zaten tanımlı.")
+        }
+        val item=BlockTypeEntity(
+            id="bt-"+UUID.randomUUID(),
+            projectId=projectId,
+            code=normalized,
+            name=name?.trim()?.ifBlank{null} ?: normalized+" Tip",
+            tooltip=tooltip?.trim()?.ifBlank{null}
+        )
+        dao.insertBlockTypes(listOf(item))
+        return item
+    }
+
+    suspend fun createBlock(projectId:String,blockTypeId:String,sequence:Int):BlockEntity{
+        require(sequence>0){"Blok numarası 0'dan büyük olmalı."}
+        val type=dao.getBlockType(blockTypeId) ?: error("Blok tipi bulunamadı.")
+        require(type.projectId==projectId){"Blok tipi bu projeye ait değil."}
+        val code=type.code+"-"+sequence
+        dao.getBlockByCode(projectId,code)?.let{error(code+" zaten mevcut.")}
+
+        val now=System.currentTimeMillis()
+        val block=BlockEntity(
+            id="block-"+UUID.randomUUID(),
+            projectId=projectId,
+            blockTypeId=blockTypeId,
+            code=code,
+            sequence=sequence
+        )
+        dao.insertBlocks(listOf(block))
+
+        val templateIds=dao.getTemplateWorkItemIds(blockTypeId)
+        if(templateIds.isNotEmpty()){
+            dao.insertBlockWorkItems(templateIds.map{definitionId->
+                BlockWorkItemEntity(
+                    id="bwi-"+UUID.randomUUID(),
+                    blockId=block.id,
+                    workItemDefinitionId=definitionId,
+                    createdAt=now,
+                    updatedAt=now
+                )
+            })
+        }
+        return block
+    }
 
     suspend fun getProjectReportSnapshot(projectId:String):ProjectReportSnapshot?{
         val project=dao.getProject(projectId) ?: return null
