@@ -113,7 +113,11 @@ object XlsxExporter {
         itemById:Map<String,com.aricansoft.sahatakip.data.db.ReportWorkItemRow>
     ):MutableList<List<String>>{
         val rows=mutableListOf<List<String>>()
-        rows.add(listOf("Blok","İmalat","Kod","Tanım","Durum","Açılış","Kapanış","Not"))
+        rows.add(listOf(
+            "Blok","İmalat","Kod","Katalog Tanımı","Özel Tanım",
+            "Kat","Mahal/Daire/Birim No","Mahal/Daire/Birim Adı",
+            "Durum","Açılış","Kapanış","Not"
+        ))
         snapshot.problems.filter{it.kind==kind}.forEach{finding->
             val item=itemById[finding.blockWorkItemId]
             rows.add(listOf(
@@ -121,6 +125,10 @@ object XlsxExporter {
                 item?.workItemName.orEmpty(),
                 finding.code,
                 finding.title,
+                finding.specificDescription.orEmpty(),
+                finding.floor.orEmpty(),
+                finding.unitNumber.orEmpty(),
+                finding.unitName.orEmpty(),
                 if(finding.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı",
                 formatDate(finding.createdAt),
                 finding.closedAt?.let{formatDate(it)} ?: "",
