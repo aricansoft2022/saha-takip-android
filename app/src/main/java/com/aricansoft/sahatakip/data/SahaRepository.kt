@@ -9,6 +9,7 @@ import java.util.UUID
 class SahaRepository(private val dao:SahaDao){
     fun observeProjects()=dao.observeProjects()
     fun observeProjectQuickStatuses()=dao.observeProjectQuickStatuses()
+    fun observeProjectWorkItemQuickStatuses()=dao.observeProjectWorkItemQuickStatuses()
     fun observeBlocks(projectId:String)=dao.observeBlocks(projectId)
     fun observeBlockTypes(projectId:String)=dao.observeBlockTypes(projectId)
     fun observeBlockWorkItems(blockId:String)=dao.observeBlockWorkItems(blockId)
