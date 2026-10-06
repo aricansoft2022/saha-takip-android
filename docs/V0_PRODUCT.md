@@ -79,6 +79,19 @@ Her fotoğrafın rapora dahil bayrağı vardır.
 Blok tipi, imalat, problem ve blok parametresi tanımlarında kısa açıklama/tooltip alanı bulunur.
 Mobil yüzeyde bilgi ikonuyla açılır.
 
+## Anasayfa hızlı durum filtresi
+Proje listesi aşağıdaki canlı durum agregasyonlarıyla tek dokunuşla filtrelenebilir:
+
+- Tümü
+- Açık problem
+- Açık avantaj
+- Kusurlu
+- Bloke
+- Devam
+- Bitti
+
+Her proje kartında mevcut problem, avantaj, kusur, bloke, devam ve bitmiş imalat sayılarının kısa özeti görünür. Filtreler proje adından veya statik etiketten değil, proje içindeki gerçek saha kayıtlarından hesaplanır.
+
 ## İmalat matrisi
 Matris özet ve drill-down ekranıdır.
 
