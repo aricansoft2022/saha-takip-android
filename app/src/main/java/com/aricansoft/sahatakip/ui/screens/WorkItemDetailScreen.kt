@@ -1,0 +1,388 @@
+package com.aricansoft.sahatakip.ui.screens
+
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ReportProblem
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aricansoft.sahatakip.data.SahaRepository
+import com.aricansoft.sahatakip.data.db.ProblemDefinitionEntity
+import com.aricansoft.sahatakip.data.model.*
+import com.aricansoft.sahatakip.photo.PendingPhoto
+import com.aricansoft.sahatakip.photo.PhotoStore
+import com.aricansoft.sahatakip.ui.InfoTooltip
+import com.aricansoft.sahatakip.ui.formatTime
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WorkItemDetailScreen(
+    repository:SahaRepository,
+    blockWorkItemId:String,
+    onBack:()->Unit
+){
+    val context=LocalContext.current
+    val scope=rememberCoroutineScope()
+    val item by remember(blockWorkItemId){repository.observeBlockWorkItem(blockWorkItemId)}
+        .collectAsStateWithLifecycle(initialValue=null)
+    val definition by produceState<com.aricansoft.sahatakip.data.db.WorkItemDefinitionEntity?>(null,item?.workItemDefinitionId){
+        value=item?.workItemDefinitionId?.let{repository.getWorkItemDefinition(it)}
+    }
+    val projectId by produceState<String?>(null,blockWorkItemId){
+        value=repository.getProjectIdForBlockWorkItem(blockWorkItemId)
+    }
+    val photoContext by produceState<com.aricansoft.sahatakip.data.db.PhotoContextRow?>(null,blockWorkItemId){
+        value=repository.getPhotoContext(blockWorkItemId)
+    }
+
+    val problemDefinitionsFlow=remember(projectId){
+        projectId?.let{repository.observeProblemDefinitions(it)} ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+    val problemDefs by problemDefinitionsFlow.collectAsStateWithLifecycle(initialValue=emptyList())
+    val problems by remember(blockWorkItemId){repository.observeProblemRecords(blockWorkItemId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    val notes by remember(blockWorkItemId){repository.observeNotes(blockWorkItemId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    val photos by remember(blockWorkItemId){repository.observePhotos(blockWorkItemId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+
+    var showNote by remember{mutableStateOf(false)}
+    var showProblem by remember{mutableStateOf(false)}
+    var pendingPhoto by remember{mutableStateOf<PendingPhoto?>(null)}
+    var photoInReport by remember{mutableStateOf(true)}
+
+    val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){success->
+        val pending=pendingPhoto
+        if(success && pending!=null){
+            scope.launch{repository.addPhoto(blockWorkItemId,pending.uri.toString(),photoInReport)}
+        }else{
+            pending?.file?.delete()
+        }
+        pendingPhoto=null
+    }
+
+    Scaffold(
+        topBar={
+            TopAppBar(
+                title={Text(definition?.name ?: "İmalat")},
+                navigationIcon={
+                    IconButton(onClick=onBack){
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack,contentDescription="Geri")
+                    }
+                }
+            )
+        }
+    ){padding->
+        val current=item
+        if(current==null){
+            Box(Modifier.fillMaxSize().padding(padding),contentAlignment=Alignment.Center){
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
+
+        Column(
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
+            verticalArrangement=Arrangement.spacedBy(16.dp)
+        ){
+            definition?.tooltip?.let{
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Text("Açıklama",style=MaterialTheme.typography.labelLarge)
+                    InfoTooltip(it)
+                }
+            }
+
+            StatusSection(
+                title="İlerleme",
+                values=ProgressStatus.entries,
+                selected=current.progressStatus,
+                label={it.label},
+                onSelect={scope.launch{repository.setProgress(blockWorkItemId,it)}}
+            )
+            StatusSection(
+                title="Kalite",
+                values=QualityStatus.entries,
+                selected=current.qualityStatus,
+                label={it.label},
+                onSelect={scope.launch{repository.setQuality(blockWorkItemId,it)}}
+            )
+            StatusSection(
+                title="Kontrol",
+                values=ControlStatus.entries,
+                selected=current.controlStatus,
+                label={it.label},
+                onSelect={scope.launch{repository.setControl(blockWorkItemId,it)}}
+            )
+
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Checkbox(
+                    checked=current.isBlocked,
+                    onCheckedChange={scope.launch{repository.setBlocked(blockWorkItemId,it)}}
+                )
+                Text("Bloke")
+            }
+
+            HorizontalDivider()
+            Text("Problemler",style=MaterialTheme.typography.titleMedium)
+            problems.forEach{problem->
+                OutlinedCard(Modifier.fillMaxWidth()){
+                    Column(Modifier.padding(12.dp)){
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Icon(Icons.Outlined.ReportProblem,contentDescription=null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(problem.code+" — "+problem.title,Modifier.weight(1f))
+                            problem.tooltip?.let{InfoTooltip(it)}
+                        }
+                        Text(if(problem.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı")
+                        problem.note?.let{Text(it)}
+                        Text(formatTime(problem.createdAt),style=MaterialTheme.typography.bodySmall)
+                        if(problem.status==ProblemRecordStatus.OPEN){
+                            TextButton(onClick={scope.launch{repository.closeProblem(problem.id)}}){
+                                Text("Problemi kapat")
+                            }
+                        }
+                    }
+                }
+            }
+            Button(onClick={showProblem=true}){
+                Icon(Icons.Outlined.ReportProblem,contentDescription=null)
+                Spacer(Modifier.width(8.dp))
+                Text("Problem ekle")
+            }
+
+            HorizontalDivider()
+            Text("Notlar",style=MaterialTheme.typography.titleMedium)
+            notes.forEach{note->
+                OutlinedCard(Modifier.fillMaxWidth()){
+                    Column(Modifier.padding(12.dp)){
+                        Text(note.text)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            formatTime(note.createdAt)+(if(note.includeInReport)" · Rapora dahil" else " · Dahili"),
+                            style=MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+            Button(onClick={showNote=true}){Text("Not ekle")}
+
+            HorizontalDivider()
+            Text("Fotoğraflar",style=MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment=Alignment.CenterVertically){
+                Checkbox(checked=photoInReport,onCheckedChange={photoInReport=it})
+                Text("Yeni fotoğraf rapora dahil")
+            }
+            Button(
+                onClick={
+                    val pc=photoContext ?: return@Button
+                    val pending=PhotoStore.create(context,pc)
+                    pendingPhoto=pending
+                    camera.launch(pending.uri)
+                },
+                enabled=photoContext!=null
+            ){
+                Icon(Icons.Outlined.CameraAlt,contentDescription=null)
+                Spacer(Modifier.width(8.dp))
+                Text("Fotoğraf çek")
+            }
+            photos.forEach{photo->
+                OutlinedCard(Modifier.fillMaxWidth()){
+                    Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
+                        LocalPhotoThumbnail(photo.localUri)
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)){
+                            Text(formatTime(photo.createdAt))
+                            Text(if(photo.includeInReport)"Rapora dahil" else "Dahili",style=MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(32.dp))
+        }
+    }
+
+    if(showNote){
+        NoteDialog(
+            onDismiss={showNote=false},
+            onSave={text,include->
+                scope.launch{repository.addNote(blockWorkItemId,text,include)}
+                showNote=false
+            }
+        )
+    }
+
+    if(showProblem && projectId!=null){
+        ProblemDialog(
+            definitions=problemDefs,
+            onDismiss={showProblem=false},
+            onExisting={definitionId,include->
+                scope.launch{repository.attachProblem(blockWorkItemId,definitionId,includeInReport=include)}
+                showProblem=false
+            },
+            onCreate={code,title,tooltip,include->
+                scope.launch{
+                    repository.createProblemAndAttach(
+                        blockWorkItemId=blockWorkItemId,
+                        projectId=requireNotNull(projectId),
+                        code=code,
+                        title=title,
+                        tooltip=tooltip,
+                        includeInReport=include
+                    )
+                }
+                showProblem=false
+            }
+        )
+    }
+}
+
+@Composable
+private fun <T> StatusSection(
+    title:String,
+    values:List<T>,
+    selected:T,
+    label:(T)->String,
+    onSelect:(T)->Unit
+){
+    Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+        Text(title,style=MaterialTheme.typography.labelLarge)
+        LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            items(values){value->
+                FilterChip(
+                    selected=value==selected,
+                    onClick={onSelect(value)},
+                    label={Text(label(value))}
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NoteDialog(onDismiss:()->Unit,onSave:(String,Boolean)->Unit){
+    var text by remember{mutableStateOf("")}
+    var include by remember{mutableStateOf(true)}
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text("Yeni not")},
+        text={
+            Column{
+                OutlinedTextField(
+                    value=text,
+                    onValueChange={text=it},
+                    label={Text("Saha notu")},
+                    modifier=Modifier.fillMaxWidth(),
+                    minLines=3
+                )
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Checkbox(checked=include,onCheckedChange={include=it})
+                    Text("Rapora dahil et")
+                }
+                Text("Tarih/saat otomatik eklenecek.",style=MaterialTheme.typography.bodySmall)
+            }
+        },
+        confirmButton={
+            TextButton(onClick={onSave(text,include)},enabled=text.isNotBlank()){Text("Kaydet")}
+        },
+        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
+    )
+}
+
+@Composable
+private fun ProblemDialog(
+    definitions:List<ProblemDefinitionEntity>,
+    onDismiss:()->Unit,
+    onExisting:(String,Boolean)->Unit,
+    onCreate:(String,String,String?,Boolean)->Unit
+){
+    var code by remember{mutableStateOf("")}
+    var title by remember{mutableStateOf("")}
+    var tooltip by remember{mutableStateOf("")}
+    var include by remember{mutableStateOf(true)}
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text("Problem ekle")},
+        text={
+            Column(
+                Modifier.heightIn(max=540.dp).verticalScroll(rememberScrollState())
+            ){
+                Text("Tanımlı problemler",style=MaterialTheme.typography.labelLarge)
+                definitions.forEach{def->
+                    TextButton(
+                        onClick={onExisting(def.id,include)},
+                        modifier=Modifier.fillMaxWidth()
+                    ){
+                        Text(def.code+" — "+def.title,Modifier.fillMaxWidth())
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical=12.dp))
+                Text("On the fly yeni problem",style=MaterialTheme.typography.labelLarge)
+                OutlinedTextField(code,{code=it},label={Text("Kod")},modifier=Modifier.fillMaxWidth())
+                OutlinedTextField(title,{title=it},label={Text("Tanım")},modifier=Modifier.fillMaxWidth())
+                OutlinedTextField(tooltip,{tooltip=it},label={Text("Tooltip")},modifier=Modifier.fillMaxWidth())
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Checkbox(checked=include,onCheckedChange={include=it})
+                    Text("Rapora dahil et")
+                }
+                Button(
+                    onClick={onCreate(code,title,tooltip.ifBlank{null},include)},
+                    enabled=code.isNotBlank() && title.isNotBlank()
+                ){Text("Tanımla ve bu imalata ekle")}
+            }
+        },
+        confirmButton={},
+        dismissButton={TextButton(onClick=onDismiss){Text("Kapat")}}
+    )
+}
+
+@Composable
+private fun LocalPhotoThumbnail(uriString:String){
+    val context=LocalContext.current
+    val bitmap by produceState<android.graphics.Bitmap?>(null,uriString){
+        value=withContext(Dispatchers.IO){
+            runCatching{
+                context.contentResolver.openInputStream(Uri.parse(uriString)).use{BitmapFactory.decodeStream(it)}
+            }.getOrNull()
+        }
+    }
+    Surface(
+        modifier=Modifier.size(84.dp),
+        shape=MaterialTheme.shapes.small,
+        tonalElevation=2.dp
+    ){
+        val bmp=bitmap
+        if(bmp!=null){
+            Image(
+                bitmap=bmp.asImageBitmap(),
+                contentDescription="Saha fotoğrafı",
+                modifier=Modifier.fillMaxSize(),
+                contentScale=ContentScale.Crop
+            )
+        }else{
+            Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                Icon(Icons.Outlined.CameraAlt,contentDescription=null)
+            }
+        }
+    }
+}
