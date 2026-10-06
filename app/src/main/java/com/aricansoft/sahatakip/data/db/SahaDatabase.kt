@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
 @Database(
-    entities = [
+    entities=[
         ProjectEntity::class,
         BlockTypeEntity::class,
         BlockEntity::class,
@@ -16,12 +16,14 @@ import androidx.room.TypeConverters
         ProblemRecordEntity::class,
         NoteEntity::class,
         PhotoEntity::class,
+        BlockAttributeDefinitionEntity::class,
+        BlockAttributeValueEntity::class,
         AuditEventEntity::class
     ],
-    version = 1,
-    exportSchema = true
+    version=1,
+    exportSchema=true
 )
 @TypeConverters(Converters::class)
-abstract class SahaDatabase : RoomDatabase() {
-    abstract fun sahaDao(): SahaDao
+abstract class SahaDatabase:RoomDatabase(){
+    abstract fun sahaDao():SahaDao
 }
