@@ -27,7 +27,21 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Sonradan TEST-3 oluşturulur ve blok tipi şablonundaki imalatları miras aldığı doğrulanır.
 - [ ] “Projedeki tüm bloklar” kapsamı ayrı blok tiplerinde doğrulanır.
 
-## 4. Durumlar
+## 4. Alakadar başka disiplin + avantaj
+
+- [ ] Yeni imalat oluştururken “Alakadar başka disiplin kalemi” işaretlenebilir.
+- [ ] Başka disiplin kalemleri blok listesinin sonunda ve farklı zeminle görünür.
+- [ ] Bir başka-disiplin kalemine açık problem eklenebilir.
+- [ ] Aynı kaleme açık avantaj eklenebilir.
+- [ ] Problem ve avantaj birbirini silmez; ikisi aynı anda açık kalabilir.
+- [ ] Avantaj kapatılabilir ve kapanma durumu korunur.
+- [ ] Matris açık problem için P, açık avantaj için A gösterir.
+- [ ] “Açık avantaj” ve “Başka disiplin” matris filtreleri çalışır.
+- [ ] Konya seed'de Mutfak Fayans / Dolap satırı elektrik kalemlerinin sonunda görünür.
+- [ ] Konya seed'de L.İ.E. kayıtları problem değil avantaj olarak görünür.
+- [ ] Eski v1 veritabanından güncellemede bu sınıflandırma korunur.
+
+## 5. Durumlar
 
 - [ ] Hızlı durumdan Başlanmadı / Devam / Bitti çalışır.
 - [ ] Kusurlu / Ağır kusurlu kalite eksenini değiştirir, ilerleme bilgisini silmez.
@@ -36,7 +50,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] “Bitti + Kusurlu + Bloke” aynı anda saklanabilir.
 - [ ] Uygulama yeniden açılınca durumlar aynı kalır.
 
-## 5. Problem kataloğu
+## 6. Problem kataloğu
 
 - [ ] Mevcut problem dropdown/arama ile bulunur ve eklenir.
 - [ ] On-the-fly yeni kod + tanım oluşturulur.
@@ -46,14 +60,14 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Problem kapatılır, kapanma durumu korunur.
 - [ ] Rapora dahil kutusu sonradan değiştirilebilir.
 
-## 6. Notlar
+## 7. Notlar
 
 - [ ] Serbest not eklenir.
 - [ ] Tarih/saat otomatik görünür.
 - [ ] İkinci not ilk notu ezmeden kronolojiye eklenir.
 - [ ] Rapora dahil kutusu oluştururken ve sonradan değiştirilebilir.
 
-## 7. Fotoğraflar
+## 8. Fotoğraflar
 
 - [ ] TEST-1 → bir imalat detayından kamera açılır.
 - [ ] Fotoğraf çekilir ve imalat ekranına döner.
@@ -64,7 +78,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Uygulama yeniden açılınca fotoğraf okunabilir.
 - [ ] Dikey ve yatay çekilen fotoğraflar raporda kabul edilebilir yönde görünür.
 
-## 8. Bağımsız blok parametreleri
+## 9. Bağımsız blok parametreleri
 
 - [ ] Yeni parametre tanımlanır: `Yatay tava var mı?`.
 - [ ] TEST-1 değeri `Evet`, TEST-2 değeri `Hayır` yapılır.
@@ -72,7 +86,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Tooltip açılır.
 - [ ] Aynı parametre tanımı başka blokta tekrar kullanılabilir.
 
-## 9. Matris
+## 10. Matris
 
 - [ ] Proje ekranından İmalat Matrisi açılır.
 - [ ] Yatay kaydırma çalışır.
@@ -85,7 +99,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Filtre temizlenince tüm matris geri gelir.
 - [ ] Bir hücreye dokununca doğru imalat detayına gider.
 
-## 10. PDF raporu
+## 11. PDF raporu
 
 - [ ] PDF dışa aktarılır.
 - [ ] Android paylaş menüsü açılır.
@@ -96,16 +110,16 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Fotoğraflar bozuk veya ezilmiş görünmez.
 - [ ] Uzun raporda sayfa geçişleri ve footer düzgündür.
 
-## 11. XLSX raporu
+## 12. XLSX raporu
 
 - [ ] XLSX dışa aktarılır.
 - [ ] Excel veya Google Sheets ile açılır.
-- [ ] `İmalat Matrisi`, `Problemler`, `Notlar`, `Fotoğraflar` sayfaları vardır.
+- [ ] `İmalat Matrisi`, `Problemler`, `Avantajlar`, `Notlar`, `Fotoğraflar` sayfaları vardır.
 - [ ] Türkçe karakterler bozulmaz.
 - [ ] Matris verileri uygulamayla eşleşir.
 - [ ] Rapora dahil olmayan kayıtlar export'a girmez.
 
-## 12. Sitepack yedek / restore
+## 13. Sitepack yedek / restore
 
 - [ ] Projede birkaç durum, problem, not ve fotoğraf oluşturulur.
 - [ ] `.sitepack` yedeği dışa aktarılır.
@@ -117,7 +131,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] İçe aktarılmış projeden tekrar PDF/XLSX alınabilir.
 - [ ] İçe aktarılmış projeden yeniden `.sitepack` alınabilir.
 
-## 13. Dayanıklılık
+## 14. Dayanıklılık
 
 - [ ] Veri girerken uygulama force-stop edilip yeniden açılır.
 - [ ] Son kaydedilmiş veri korunur.
