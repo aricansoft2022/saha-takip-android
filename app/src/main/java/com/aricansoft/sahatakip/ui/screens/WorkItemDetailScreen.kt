@@ -34,6 +34,7 @@ import com.aricansoft.sahatakip.ui.formatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -320,6 +321,10 @@ private fun ProblemDialog(
     var title by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
     var include by remember{mutableStateOf(true)}
+    val normalizedCode=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
+    val existingDefinition=definitions.firstOrNull{
+        it.code.uppercase(Locale.forLanguageTag("tr-TR"))==normalizedCode && normalizedCode.isNotBlank()
+    }
     AlertDialog(
         onDismissRequest=onDismiss,
         title={Text("Problem ekle")},
@@ -339,15 +344,38 @@ private fun ProblemDialog(
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("On the fly yeni problem",style=MaterialTheme.typography.labelLarge)
                 OutlinedTextField(code,{code=it},label={Text("Kod")},modifier=Modifier.fillMaxWidth())
-                OutlinedTextField(title,{title=it},label={Text("Tanım")},modifier=Modifier.fillMaxWidth())
-                OutlinedTextField(tooltip,{tooltip=it},label={Text("Tooltip")},modifier=Modifier.fillMaxWidth())
+                if(existingDefinition!=null){
+                    OutlinedCard(Modifier.fillMaxWidth().padding(top=8.dp)){
+                        Column(Modifier.padding(10.dp)){
+                            Text("Bu kod zaten tanımlı.",style=MaterialTheme.typography.labelLarge)
+                            Text(existingDefinition.code+" — "+existingDefinition.title)
+                            TextButton(onClick={onExisting(existingDefinition.id,include)}){
+                                Text("Mevcut problemi kullan")
+                            }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    title,
+                    {title=it},
+                    label={Text("Tanım")},
+                    modifier=Modifier.fillMaxWidth(),
+                    enabled=existingDefinition==null
+                )
+                OutlinedTextField(
+                    tooltip,
+                    {tooltip=it},
+                    label={Text("Tooltip")},
+                    modifier=Modifier.fillMaxWidth(),
+                    enabled=existingDefinition==null
+                )
                 Row(verticalAlignment=Alignment.CenterVertically){
                     Checkbox(checked=include,onCheckedChange={include=it})
                     Text("Rapora dahil et")
                 }
                 Button(
                     onClick={onCreate(code,title,tooltip.ifBlank{null},include)},
-                    enabled=code.isNotBlank() && title.isNotBlank()
+                    enabled=code.isNotBlank() && title.isNotBlank() && existingDefinition==null
                 ){Text("Tanımla ve bu imalata ekle")}
             }
         },
