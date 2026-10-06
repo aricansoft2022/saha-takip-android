@@ -63,6 +63,19 @@ data class ProjectQuickStatusRow(
     val openAdvantageCount:Int
 )
 
+data class ProjectWorkItemQuickStatusRow(
+    val projectId:String,
+    val workItemName:String,
+    val workItemKind:com.aricansoft.sahatakip.data.model.WorkItemKind,
+    val totalWorkItemCount:Int,
+    val inProgressCount:Int,
+    val finishedCount:Int,
+    val defectiveCount:Int,
+    val blockedCount:Int,
+    val openProblemCount:Int,
+    val openAdvantageCount:Int
+)
+
 data class ReportWorkItemRow(
     val blockWorkItemId:String,
     val blockCode:String,
@@ -172,6 +185,40 @@ interface SahaDao {
         ORDER BY p.name
     """)
     fun observeProjectQuickStatuses():Flow<List<ProjectQuickStatusRow>>
+
+    @Query("""
+        SELECT
+            b.projectId AS projectId,
+            wid.name AS workItemName,
+            wid.kind AS workItemKind,
+            COUNT(*) AS totalWorkItemCount,
+            SUM(CASE WHEN bwi.progressStatus='IN_PROGRESS' THEN 1 ELSE 0 END) AS inProgressCount,
+            SUM(CASE WHEN bwi.progressStatus='FINISHED' THEN 1 ELSE 0 END) AS finishedCount,
+            SUM(CASE WHEN bwi.qualityStatus IN ('DEFECTIVE','CRITICAL_DEFECT') THEN 1 ELSE 0 END) AS defectiveCount,
+            SUM(CASE WHEN bwi.isBlocked=1 THEN 1 ELSE 0 END) AS blockedCount,
+            SUM((
+                SELECT COUNT(*)
+                FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id
+                  AND pr.status='OPEN'
+                  AND pd.kind='PROBLEM'
+            )) AS openProblemCount,
+            SUM((
+                SELECT COUNT(*)
+                FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id
+                  AND pr.status='OPEN'
+                  AND pd.kind='ADVANTAGE'
+            )) AS openAdvantageCount
+        FROM block_work_items bwi
+        JOIN blocks b ON b.id=bwi.blockId
+        JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
+        GROUP BY b.projectId, wid.name, wid.kind
+        ORDER BY CASE wid.kind WHEN 'ELECTRICAL' THEN 0 ELSE 1 END, wid.name
+    """)
+    fun observeProjectWorkItemQuickStatuses():Flow<List<ProjectWorkItemQuickStatusRow>>
 
     @Query("SELECT * FROM blocks WHERE projectId=:projectId ORDER BY blockTypeId, sequence")
     fun observeBlocks(projectId:String):Flow<List<BlockEntity>>
