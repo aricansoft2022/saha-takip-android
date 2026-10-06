@@ -14,10 +14,13 @@ data class BlockWorkItemRow(
     val name:String,
     val code:String?,
     val tooltip:String?,
+    val kind:com.aricansoft.sahatakip.data.model.WorkItemKind,
     val progressStatus:com.aricansoft.sahatakip.data.model.ProgressStatus,
     val qualityStatus:com.aricansoft.sahatakip.data.model.QualityStatus,
     val controlStatus:com.aricansoft.sahatakip.data.model.ControlStatus,
     val isBlocked:Boolean,
+    val openProblemCount:Int,
+    val openAdvantageCount:Int,
     val updatedAt:Long
 )
 
@@ -28,6 +31,7 @@ data class ProblemRecordRow(
     val code:String,
     val title:String,
     val tooltip:String?,
+    val kind:com.aricansoft.sahatakip.data.model.FindingKind,
     val status:com.aricansoft.sahatakip.data.model.ProblemRecordStatus,
     val note:String?,
     val includeInReport:Boolean,
@@ -48,17 +52,20 @@ data class ReportWorkItemRow(
     val blockWorkItemId:String,
     val blockCode:String,
     val workItemName:String,
+    val workItemKind:com.aricansoft.sahatakip.data.model.WorkItemKind,
     val progressStatus:com.aricansoft.sahatakip.data.model.ProgressStatus,
     val qualityStatus:com.aricansoft.sahatakip.data.model.QualityStatus,
     val controlStatus:com.aricansoft.sahatakip.data.model.ControlStatus,
     val isBlocked:Boolean,
-    val openProblemCount:Int
+    val openProblemCount:Int,
+    val openAdvantageCount:Int
 )
 
 data class ReportProblemRow(
     val blockWorkItemId:String,
     val code:String,
     val title:String,
+    val kind:com.aricansoft.sahatakip.data.model.FindingKind,
     val note:String?,
     val status:com.aricansoft.sahatakip.data.model.ProblemRecordStatus,
     val createdAt:Long,
@@ -115,13 +122,20 @@ interface SahaDao {
 
     @Query("""
         SELECT bwi.id, bwi.blockId, bwi.workItemDefinitionId,
-               wid.name, wid.code, wid.tooltip,
+               wid.name, wid.code, wid.tooltip, wid.kind,
                bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus,
-               bwi.isBlocked, bwi.updatedAt
+               bwi.isBlocked,
+               (SELECT COUNT(*) FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='PROBLEM') AS openProblemCount,
+               (SELECT COUNT(*) FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount,
+               bwi.updatedAt
         FROM block_work_items bwi
         JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
         WHERE bwi.blockId=:blockId
-        ORDER BY wid.name
+        ORDER BY CASE wid.kind WHEN 'ELECTRICAL' THEN 0 ELSE 1 END, wid.name
     """)
     fun observeBlockWorkItems(blockId:String):Flow<List<BlockWorkItemRow>>
 
@@ -137,23 +151,34 @@ interface SahaDao {
     @Query("SELECT * FROM work_item_definitions WHERE id=:id")
     suspend fun getWorkItemDefinition(id:String):WorkItemDefinitionEntity?
 
-    @Query("SELECT * FROM work_item_definitions WHERE projectId=:projectId AND active=1 ORDER BY name")
+    @Query("""
+        SELECT * FROM work_item_definitions
+        WHERE projectId=:projectId AND active=1
+        ORDER BY CASE kind WHEN 'ELECTRICAL' THEN 0 ELSE 1 END, name
+    """)
     fun observeWorkItemDefinitions(projectId:String):Flow<List<WorkItemDefinitionEntity>>
 
-    @Query("SELECT * FROM problem_definitions WHERE projectId=:projectId AND active=1 ORDER BY code")
+    @Query("""
+        SELECT * FROM problem_definitions
+        WHERE projectId=:projectId AND active=1
+        ORDER BY CASE kind WHEN 'PROBLEM' THEN 0 ELSE 1 END, code
+    """)
     fun observeProblemDefinitions(projectId:String):Flow<List<ProblemDefinitionEntity>>
 
     @Query("SELECT * FROM problem_definitions WHERE projectId=:projectId AND code=:code LIMIT 1")
     suspend fun getProblemDefinitionByCode(projectId:String,code:String):ProblemDefinitionEntity?
 
+    @Query("SELECT * FROM problem_definitions WHERE id=:id")
+    suspend fun getProblemDefinition(id:String):ProblemDefinitionEntity?
+
     @Query("""
         SELECT pr.id, pr.blockWorkItemId, pr.problemDefinitionId,
-               pd.code, pd.title, pd.tooltip,
+               pd.code, pd.title, pd.tooltip, pd.kind,
                pr.status, pr.note, pr.includeInReport, pr.createdAt, pr.closedAt
         FROM problem_records pr
         JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
         WHERE pr.blockWorkItemId=:blockWorkItemId
-        ORDER BY pr.createdAt DESC
+        ORDER BY CASE pd.kind WHEN 'PROBLEM' THEN 0 ELSE 1 END, pr.createdAt DESC
     """)
     fun observeProblemRecords(blockWorkItemId:String):Flow<List<ProblemRecordRow>>
 
@@ -198,34 +223,44 @@ interface SahaDao {
 
     @Query("""
         SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
+               wid.kind AS workItemKind,
                bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked,
                (SELECT COUNT(*) FROM problem_records pr
-                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN') AS openProblemCount
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='PROBLEM') AS openProblemCount,
+               (SELECT COUNT(*) FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN block_types bt ON bt.id=b.blockTypeId
         JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
         WHERE b.projectId=:projectId
-        ORDER BY bt.code, b.sequence, wid.name
+        ORDER BY bt.code, b.sequence, CASE wid.kind WHEN 'ELECTRICAL' THEN 0 ELSE 1 END, wid.name
     """)
     suspend fun getReportWorkItems(projectId:String):List<ReportWorkItemRow>
 
     @Query("""
         SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
+               wid.kind AS workItemKind,
                bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked,
                (SELECT COUNT(*) FROM problem_records pr
-                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN') AS openProblemCount
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='PROBLEM') AS openProblemCount,
+               (SELECT COUNT(*) FROM problem_records pr
+                JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN block_types bt ON bt.id=b.blockTypeId
         JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
         WHERE b.projectId=:projectId
-        ORDER BY bt.code, b.sequence, wid.name
+        ORDER BY bt.code, b.sequence, CASE wid.kind WHEN 'ELECTRICAL' THEN 0 ELSE 1 END, wid.name
     """)
     fun observeProjectMatrixRows(projectId:String):Flow<List<ReportWorkItemRow>>
 
     @Query("""
-        SELECT pr.blockWorkItemId, pd.code, pd.title, pr.note, pr.status, pr.createdAt, pr.closedAt
+        SELECT pr.blockWorkItemId, pd.code, pd.title, pd.kind, pr.note, pr.status, pr.createdAt, pr.closedAt
         FROM problem_records pr
         JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
         JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
