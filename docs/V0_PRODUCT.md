@@ -24,8 +24,9 @@ Saha verisi tek bir hiyerarşiye sıkıştırılmaz.
 
 - Blok tipi: GK, GB, A...
 - Blok: GK-1, GK-9...
-- İmalat tanımı: Daire Pano, Kolon Hattı...
-- Problem tanımı: tekrar kullanılabilir kod + açıklama
+- İmalat/takip kalemi: Daire Pano, Kolon Hattı, Mutfak Fayans / Dolap...
+- Kalem türü: Elektrik imalatı / Alakadar başka disiplin kalemi
+- Bulgu tanımı: Problem veya Avantaj; tekrar kullanılabilir kod + açıklama
 - Blok parametresi: "Yatay tava var mı?" gibi imalattan bağımsız alanlar
 
 Yeni blok, blok tipinin imalat şablonunu miras alır.
@@ -40,13 +41,28 @@ Kapsam:
 
 Blok tipi veya proje kapsamındaki imalatlar yeni oluşturulan bloklara şablon olarak da miras kalır.
 
-## Problem kataloğu
-Problem tanımı ile saha problem kaydı ayrı kavramlardır.
+## Problem ve avantaj kataloğu
+Tanım ile saha kaydı ayrı kavramlardır. Bulgu türü de bağımsızdır:
 
-- Kodlar proje içinde tekrar kullanılabilir.
-- Aynı problem kodunun sessizce ikinci tanımı yaratılamaz.
-- Problem saha kaydı Açık / Kapalı yaşam döngüsüne sahiptir.
-- Her kayıt rapora dahil/hariç bırakılabilir.
+- Problem
+- Avantaj
+
+Her ikisi de Açık / Kapalı yaşam döngüsüne sahiptir.
+Kodlar proje içinde tek anlam taşır; aynı kod sessizce başka türde yeniden yaratılamaz.
+Her problem/avantaj kaydı rapora dahil/hariç bırakılabilir.
+
+Avantaj, "problem yok" demek değildir. Örneğin başka disiplinin henüz tamamlamadığı ve elektrik müdahalesi için alan bırakan bir iş açık avantaj olarak tutulabilir.
+
+## Alakadar başka disiplin kalemi
+Elektrik işi olmayan fakat elektrik işinin yapılabilirliğini, maliyetini veya düzeltme yöntemini etkileyen işler ayrı türde tutulur.
+
+Örnek: `Mutfak Fayans / Dolap`.
+
+- Elektrik kalemlerinden sonra listelenir.
+- Ayrı renkle gösterilir.
+- Normal ilerleme bilgisi saklanabilir.
+- Açık problem ve açık avantaj aynı kalem üzerinde bağımsız kayıtlar olarak bulunabilir.
+- Matris üzerinde `P` açık problemi, `A` açık avantajı gösterir.
 
 ## Notlar
 Tarih/saat otomatik metadata olarak saklanır. Her notun rapora dahil bayrağı vardır.
@@ -71,7 +87,7 @@ Matris özet ve drill-down ekranıdır.
 - İlerleme sembolü
 - Kusur / bloke / açık problem işaretleri
 - Blok tipi filtresi
-- Açık problem / kusurlu / bloke / devam / bitti filtreleri
+- Açık problem / açık avantaj / başka disiplin / kusurlu / bloke / devam / bitti filtreleri
 - Hücreden doğrudan imalat detayına geçiş
 
 ## Raporlar
@@ -85,6 +101,7 @@ Matris özet ve drill-down ekranıdır.
 ### XLSX
 - İmalat Matrisi
 - Problemler
+- Avantajlar
 - Notlar
 - Fotoğraflar
 
