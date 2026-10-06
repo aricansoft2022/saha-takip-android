@@ -13,8 +13,10 @@ import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
 import com.aricansoft.sahatakip.BuildConfig
+import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
+import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.data.model.ProgressStatus
 import java.io.File
 import java.io.FileOutputStream
@@ -38,7 +40,12 @@ object ReportExporter {
                 it.qualityStatus==QualityStatus.DEFECTIVE || it.qualityStatus==QualityStatus.CRITICAL_DEFECT
             }
             val blocked=snapshot.workItems.count{it.isBlocked}
-            val openProblems=snapshot.problems.count{it.status==ProblemRecordStatus.OPEN}
+            val openProblems=snapshot.problems.count{
+                it.kind==FindingKind.PROBLEM && it.status==ProblemRecordStatus.OPEN
+            }
+            val openAdvantages=snapshot.problems.count{
+                it.kind==FindingKind.ADVANTAGE && it.status==ProblemRecordStatus.OPEN
+            }
 
             writer.title("SAHA TAKİP RAPORU")
             writer.paragraph("Proje: "+snapshot.projectName)
@@ -50,7 +57,8 @@ object ReportExporter {
                     "   •   Bitti: "+finished+
                     "   •   Kusurlu/ağır kusurlu: "+defective+
                     "   •   Bloke: "+blocked+
-                    "   •   Açık rapor problemi: "+openProblems
+                    "   •   Açık rapor problemi: "+openProblems+
+                    "   •   Açık rapor avantajı: "+openAdvantages
             )
             writer.spacer(8f)
 
@@ -68,17 +76,19 @@ object ReportExporter {
                         if(item.qualityStatus!=QualityStatus.NOT_EVALUATED) add(item.qualityStatus.label)
                         add(item.controlStatus.label)
                         if(item.isBlocked) add("Bloke")
+                        if(item.workItemKind==WorkItemKind.RELATED_DISCIPLINE) add("Alakadar başka disiplin")
                     }.joinToString(" · ")
 
                     writer.subheading(item.workItemName)
                     writer.paragraph(status,indent=10f)
 
-                    problems[item.blockWorkItemId].orEmpty().forEach{problem->
-                        val state=if(problem.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı"
+                    problems[item.blockWorkItemId].orEmpty().forEach{finding->
+                        val state=if(finding.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı"
+                        val label=if(finding.kind==FindingKind.ADVANTAGE)"Avantaj" else "Problem"
                         writer.bullet(
-                            "Problem "+problem.code+" — "+problem.title+" ["+state+"]"+
-                                (problem.note?.let{" — "+it} ?: "")+
-                                " ("+formatDate(problem.createdAt)+")"
+                            label+" "+finding.code+" — "+finding.title+" ["+state+"]"+
+                                (finding.note?.let{" — "+it} ?: "")+
+                                " ("+formatDate(finding.createdAt)+")"
                         )
                     }
 
