@@ -137,7 +137,15 @@ private fun AddWorkItemDialog(
 ){
     var name by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
+    var search by remember{mutableStateOf("")}
     var scope by remember{mutableStateOf(WorkItemScope.THIS_BLOCK)}
+    val visibleDefinitions=definitions
+        .filterNot{it.id in attachedIds && scope==WorkItemScope.THIS_BLOCK}
+        .filter{
+            search.isBlank() ||
+                it.name.contains(search,ignoreCase=true) ||
+                (it.code?.contains(search,ignoreCase=true)==true)
+        }
 
     AlertDialog(
         onDismissRequest=onDismiss,
@@ -159,7 +167,14 @@ private fun AddWorkItemDialog(
 
                 HorizontalDivider(Modifier.padding(vertical=12.dp))
                 Text("Mevcut tanımlar",style=MaterialTheme.typography.labelLarge)
-                definitions.filterNot{it.id in attachedIds && scope==WorkItemScope.THIS_BLOCK}.forEach{def->
+                OutlinedTextField(
+                    value=search,
+                    onValueChange={search=it},
+                    label={Text("İmalat ara")},
+                    modifier=Modifier.fillMaxWidth(),
+                    singleLine=true
+                )
+                visibleDefinitions.forEach{def->
                     TextButton(
                         onClick={onAttach(def.id,scope)},
                         modifier=Modifier.fillMaxWidth()

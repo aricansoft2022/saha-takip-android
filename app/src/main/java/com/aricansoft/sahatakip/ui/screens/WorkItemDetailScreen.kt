@@ -425,7 +425,13 @@ private fun ProblemDialog(
     var code by remember{mutableStateOf("")}
     var title by remember{mutableStateOf("")}
     var tooltip by remember{mutableStateOf("")}
+    var search by remember{mutableStateOf("")}
     var include by remember{mutableStateOf(true)}
+    val visibleDefinitions=definitions.filter{
+        search.isBlank() ||
+            it.code.contains(search,ignoreCase=true) ||
+            it.title.contains(search,ignoreCase=true)
+    }
     val normalizedCode=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
     val existingDefinition=definitions.firstOrNull{
         it.code.uppercase(Locale.forLanguageTag("tr-TR"))==normalizedCode && normalizedCode.isNotBlank()
@@ -438,7 +444,14 @@ private fun ProblemDialog(
                 Modifier.heightIn(max=540.dp).verticalScroll(rememberScrollState())
             ){
                 Text("Tanımlı problemler",style=MaterialTheme.typography.labelLarge)
-                definitions.forEach{def->
+                OutlinedTextField(
+                    value=search,
+                    onValueChange={search=it},
+                    label={Text("Problem kodu veya tanımı ara")},
+                    modifier=Modifier.fillMaxWidth(),
+                    singleLine=true
+                )
+                visibleDefinitions.forEach{def->
                     TextButton(
                         onClick={onExisting(def.id,include)},
                         modifier=Modifier.fillMaxWidth()
