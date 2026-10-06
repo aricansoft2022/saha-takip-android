@@ -2,6 +2,7 @@ package com.aricansoft.sahatakip
 
 import android.app.Application
 import androidx.room.Room
+import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.LegacyKonyaSeed
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.SahaDatabase
@@ -15,6 +16,7 @@ class SahaTakipApplication:Application(){
         Room.databaseBuilder(this,SahaDatabase::class.java,"saha-takip.db").build()
     }
     val repository:SahaRepository by lazy{SahaRepository(database.sahaDao())}
+    val sitePackManager:SitePackManager by lazy{SitePackManager(this,database)}
 
     override fun onCreate(){
         super.onCreate()
