@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BlockAttributeValueEntity::class,
         AuditEventEntity::class
     ],
-    version=2,
+    version=3,
     exportSchema=true
 )
 @TypeConverters(Converters::class)
@@ -80,6 +80,13 @@ abstract class SahaDatabase:RoomDatabase(){
                       AND wid.name='Mutfak Fayans / Dolap'
                       AND bwi.progressStatus='FINISHED'
                 """.trimIndent())
+            }
+        }
+
+        val MIGRATION_2_3=object:Migration(2,3){
+            override fun migrate(db:SupportSQLiteDatabase){
+                db.execSQL("ALTER TABLE photos ADD COLUMN problemRecordId TEXT DEFAULT NULL")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_photos_problemRecordId ON photos(problemRecordId)")
             }
         }
     }
