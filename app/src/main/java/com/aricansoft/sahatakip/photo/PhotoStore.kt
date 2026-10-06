@@ -32,6 +32,6 @@ object PhotoStore {
 
     private fun safe(value:String)=value
         .trim()
-        .replace(Regex("[^\p{L}\p{N}._-]+"),"_")
+        .replace(Regex("""[^\p{L}\p{N}._-]+"""),"_")
         .take(80)
 }
