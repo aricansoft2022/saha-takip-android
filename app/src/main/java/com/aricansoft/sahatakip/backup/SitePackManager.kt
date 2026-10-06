@@ -216,27 +216,80 @@ class SitePackManager(
     }
 
     private fun normalizeKindsForImport(tables:JSONObject){
+        val relatedDefinitionIds=mutableSetOf<String>()
         val workItems=tables.getJSONArray("work_item_definitions")
+        var legacyProjectId:String?=null
         for(i in 0 until workItems.length()){
             val row=workItems.getJSONObject(i)
             if(!row.has("kind") || row.isNull("kind")) row.put("kind","ELECTRICAL")
-            if(
-                row.optString("projectId")=="project-konya-444" &&
-                row.optString("name")=="Mutfak Fayans / Dolap"
-            ){
+            if(row.optString("name")=="Mutfak Fayans / Dolap"){
                 row.put("kind","RELATED_DISCIPLINE")
+                relatedDefinitionIds += row.getString("id")
+                legacyProjectId=row.optString("projectId").ifBlank{legacyProjectId}
             }
         }
 
         val definitions=tables.getJSONArray("problem_definitions")
+        var completedDefinitionId:String?=null
         for(i in 0 until definitions.length()){
             val row=definitions.getJSONObject(i)
             if(!row.has("kind") || row.isNull("kind")) row.put("kind","PROBLEM")
-            if(
-                row.optString("projectId")=="project-konya-444" &&
-                row.optString("code")=="L.İ.E."
-            ){
+            if(row.optString("code")=="L.İ.E."){
                 row.put("kind","ADVANTAGE")
+            }
+            if(row.optString("code")=="TAM.İNŞ."){
+                row.put("kind","PROBLEM")
+                completedDefinitionId=row.getString("id")
+            }
+        }
+
+        if(relatedDefinitionIds.isNotEmpty() && completedDefinitionId==null){
+            val projectId=legacyProjectId ?: singleId(tables,"projects")
+            completedDefinitionId="pd-import-related-complete"
+            definitions.put(
+                JSONObject()
+                    .put("id",completedDefinitionId)
+                    .put("projectId",projectId)
+                    .put("code","TAM.İNŞ.")
+                    .put("title","Aleyhimize tamamlanmış inşaat işi")
+                    .put("description",JSONObject.NULL)
+                    .put("tooltip","Elektrik işini etkileyen başka disiplin imalatı biz müdahale etmeden tamamlanmış.")
+                    .put("active",1)
+                    .put("kind","PROBLEM")
+            )
+        }
+
+        val completedId=completedDefinitionId
+        if(completedId!=null && relatedDefinitionIds.isNotEmpty()){
+            val records=tables.getJSONArray("problem_records")
+            val existing=mutableSetOf<Pair<String,String>>()
+            for(i in 0 until records.length()){
+                val row=records.getJSONObject(i)
+                existing += row.optString("blockWorkItemId") to row.optString("problemDefinitionId")
+            }
+
+            val blockWorkItems=tables.getJSONArray("block_work_items")
+            for(i in 0 until blockWorkItems.length()){
+                val row=blockWorkItems.getJSONObject(i)
+                if(
+                    row.optString("workItemDefinitionId") in relatedDefinitionIds &&
+                    row.optString("progressStatus")=="FINISHED"
+                ){
+                    val bwiId=row.getString("id")
+                    if((bwiId to completedId) !in existing){
+                        records.put(
+                            JSONObject()
+                                .put("id","pr-import-related-complete-"+bwiId)
+                                .put("blockWorkItemId",bwiId)
+                                .put("problemDefinitionId",completedId)
+                                .put("status","OPEN")
+                                .put("note",JSONObject.NULL)
+                                .put("includeInReport",1)
+                                .put("createdAt",row.optLong("updatedAt",System.currentTimeMillis()))
+                                .put("closedAt",JSONObject.NULL)
+                        )
+                    }
+                }
             }
         }
     }
