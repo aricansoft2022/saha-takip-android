@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -29,11 +30,41 @@ import com.aricansoft.sahatakip.backup.GkteShare
 import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
+import com.aricansoft.sahatakip.data.db.ProjectQuickStatusRow
 import com.aricansoft.sahatakip.report.ReportExporter
 import com.aricansoft.sahatakip.report.XlsxExporter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private enum class HomeQuickFilter(val label:String){
+    ALL("Tümü"),
+    OPEN_PROBLEM("Açık problem"),
+    OPEN_ADVANTAGE("Açık avantaj"),
+    DEFECTIVE("Kusurlu"),
+    BLOCKED("Bloke"),
+    IN_PROGRESS("Devam"),
+    FINISHED("Bitti")
+}
+
+private fun ProjectQuickStatusRow.matches(filter:HomeQuickFilter)=when(filter){
+    HomeQuickFilter.ALL -> true
+    HomeQuickFilter.OPEN_PROBLEM -> openProblemCount>0
+    HomeQuickFilter.OPEN_ADVANTAGE -> openAdvantageCount>0
+    HomeQuickFilter.DEFECTIVE -> defectiveCount>0
+    HomeQuickFilter.BLOCKED -> blockedCount>0
+    HomeQuickFilter.IN_PROGRESS -> inProgressCount>0
+    HomeQuickFilter.FINISHED -> finishedCount>0
+}
+
+private fun ProjectQuickStatusRow.summaryText():String=buildList{
+    if(openProblemCount>0) add("P $openProblemCount")
+    if(openAdvantageCount>0) add("A $openAdvantageCount")
+    if(defectiveCount>0) add("Kusurlu $defectiveCount")
+    if(blockedCount>0) add("Bloke $blockedCount")
+    if(inProgressCount>0) add("Devam $inProgressCount")
+    if(finishedCount>0) add("Bitti $finishedCount")
+}.joinToString(" · ")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,8 +74,22 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
     val scope=rememberCoroutineScope()
     val snackbar=remember{SnackbarHostState()}
     val projects by repository.observeProjects().collectAsStateWithLifecycle(initialValue=emptyList())
+    val quickStatuses by repository.observeProjectQuickStatuses()
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    var selectedQuickFilter by rememberSaveable{mutableStateOf(HomeQuickFilter.ALL)}
     var showAdd by remember{mutableStateOf(false)}
     var importing by remember{mutableStateOf(false)}
+
+    val statusByProject=remember(quickStatuses){quickStatuses.associateBy{it.projectId}}
+    val visibleProjects=remember(projects,statusByProject,selectedQuickFilter){
+        if(selectedQuickFilter==HomeQuickFilter.ALL){
+            projects
+        }else{
+            projects.filter{project->
+                statusByProject[project.id]?.matches(selectedQuickFilter)==true
+            }
+        }
+    }
 
     val importLauncher=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->
         if(uri!=null){
@@ -92,29 +137,70 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
             }
         }
     ){padding->
-        if(projects.isEmpty()){
-            Box(Modifier.fillMaxSize().padding(padding),contentAlignment=Alignment.Center){
-                CircularProgressIndicator()
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ){
+            Surface(tonalElevation=1.dp){
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),
+                    verticalArrangement=Arrangement.spacedBy(6.dp)
+                ){
+                    Text("Hızlı durum filtresi",style=MaterialTheme.typography.labelLarge)
+                    LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        items(HomeQuickFilter.entries,key={it.name}){filter->
+                            val count=if(filter==HomeQuickFilter.ALL){
+                                projects.size
+                            }else{
+                                projects.count{project->
+                                    statusByProject[project.id]?.matches(filter)==true
+                                }
+                            }
+                            FilterChip(
+                                selected=selectedQuickFilter==filter,
+                                onClick={selectedQuickFilter=filter},
+                                label={Text(filter.label+" ("+count+")")}
+                            )
+                        }
+                    }
+                }
             }
-        }else{
-            LazyColumn(
-                modifier=Modifier.fillMaxSize().padding(padding),
-                contentPadding=PaddingValues(16.dp),
-                verticalArrangement=Arrangement.spacedBy(12.dp)
-            ){
-                items(projects,key={it.id}){project->
-                    ElevatedCard(
-                        modifier=Modifier.fillMaxWidth().clickable{onProject(project.id)}
-                    ){
-                        Row(
-                            Modifier.fillMaxWidth().padding(18.dp),
-                            verticalAlignment=Alignment.CenterVertically
+
+            if(projects.isEmpty()){
+                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                    CircularProgressIndicator()
+                }
+            }else if(visibleProjects.isEmpty()){
+                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                    Text("Seçili durumda proje yok.")
+                }
+            }else{
+                LazyColumn(
+                    modifier=Modifier.fillMaxSize(),
+                    contentPadding=PaddingValues(16.dp),
+                    verticalArrangement=Arrangement.spacedBy(12.dp)
+                ){
+                    items(visibleProjects,key={it.id}){project->
+                        val quick=statusByProject[project.id]
+                        ElevatedCard(
+                            modifier=Modifier.fillMaxWidth().clickable{onProject(project.id)}
                         ){
-                            Icon(Icons.Outlined.Apartment,contentDescription=null)
-                            Spacer(Modifier.width(12.dp))
-                            Column{
-                                Text(project.name,style=MaterialTheme.typography.titleMedium)
-                                Text("Blokları aç",style=MaterialTheme.typography.bodySmall)
+                            Row(
+                                Modifier.fillMaxWidth().padding(18.dp),
+                                verticalAlignment=Alignment.CenterVertically
+                            ){
+                                Icon(Icons.Outlined.Apartment,contentDescription=null)
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)){
+                                    Text(project.name,style=MaterialTheme.typography.titleMedium)
+                                    val summary=quick?.summaryText().orEmpty()
+                                    Text(
+                                        if(summary.isBlank())"Henüz durum kaydı yok" else summary,
+                                        style=MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                Text("Aç →",style=MaterialTheme.typography.labelLarge)
                             }
                         }
                     }
