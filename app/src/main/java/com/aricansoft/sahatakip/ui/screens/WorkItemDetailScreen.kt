@@ -158,6 +158,15 @@ fun WorkItemDetailScreen(
                         Text(if(problem.status==ProblemRecordStatus.OPEN)"Açık" else "Kapalı")
                         problem.note?.let{Text(it)}
                         Text(formatTime(problem.createdAt),style=MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Checkbox(
+                                checked=problem.includeInReport,
+                                onCheckedChange={checked->
+                                    scope.launch{repository.setProblemReportInclusion(problem.id,checked)}
+                                }
+                            )
+                            Text("Rapora dahil")
+                        }
                         if(problem.status==ProblemRecordStatus.OPEN){
                             TextButton(onClick={scope.launch{repository.closeProblem(problem.id)}}){
                                 Text("Problemi kapat")
@@ -179,10 +188,16 @@ fun WorkItemDetailScreen(
                     Column(Modifier.padding(12.dp)){
                         Text(note.text)
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            formatTime(note.createdAt)+(if(note.includeInReport)" · Rapora dahil" else " · Dahili"),
-                            style=MaterialTheme.typography.bodySmall
-                        )
+                        Text(formatTime(note.createdAt),style=MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Checkbox(
+                                checked=note.includeInReport,
+                                onCheckedChange={checked->
+                                    scope.launch{repository.setNoteReportInclusion(note.id,checked)}
+                                }
+                            )
+                            Text("Rapora dahil")
+                        }
                     }
                 }
             }
@@ -214,7 +229,15 @@ fun WorkItemDetailScreen(
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)){
                             Text(formatTime(photo.createdAt))
-                            Text(if(photo.includeInReport)"Rapora dahil" else "Dahili",style=MaterialTheme.typography.bodySmall)
+                            Row(verticalAlignment=Alignment.CenterVertically){
+                                Checkbox(
+                                    checked=photo.includeInReport,
+                                    onCheckedChange={checked->
+                                        scope.launch{repository.setPhotoReportInclusion(photo.id,checked)}
+                                    }
+                                )
+                                Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }

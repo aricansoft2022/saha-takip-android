@@ -261,6 +261,15 @@ interface SahaDao {
     @Update suspend fun updateBlockWorkItem(item:BlockWorkItemEntity)
     @Update suspend fun updateProblemRecord(item:ProblemRecordEntity)
 
+    @Query("UPDATE problem_records SET includeInReport=:include WHERE id=:id")
+    suspend fun setProblemReportInclusion(id:String,include:Boolean)
+
+    @Query("UPDATE notes SET includeInReport=:include WHERE id=:id")
+    suspend fun setNoteReportInclusion(id:String,include:Boolean)
+
+    @Query("UPDATE photos SET includeInReport=:include WHERE id=:id")
+    suspend fun setPhotoReportInclusion(id:String,include:Boolean)
+
     @Query("SELECT COUNT(*) FROM projects")
     suspend fun projectCount():Int
 }

@@ -219,6 +219,15 @@ class SahaRepository(private val dao:SahaDao){
         audit(blockWorkItemId,AuditEventType.PHOTO_ADDED,"Fotoğraf eklendi",now)
     }
 
+    suspend fun setProblemReportInclusion(id:String,include:Boolean)=
+        dao.setProblemReportInclusion(id,include)
+
+    suspend fun setNoteReportInclusion(id:String,include:Boolean)=
+        dao.setNoteReportInclusion(id,include)
+
+    suspend fun setPhotoReportInclusion(id:String,include:Boolean)=
+        dao.setPhotoReportInclusion(id,include)
+
     private suspend fun mutateWorkItem(
         id:String,
         detail:String,
