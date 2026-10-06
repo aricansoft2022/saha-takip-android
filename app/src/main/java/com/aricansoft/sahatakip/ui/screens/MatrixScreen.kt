@@ -325,7 +325,7 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
                         qualifier,
                         style=MaterialTheme.typography.labelSmall,
                         fontWeight=FontWeight.Bold,
-                        color=if(row?.openAdvantageCount ?: 0 > 0 && (row?.openProblemCount ?: 0)==0)
+                        color=if((row?.openAdvantageCount ?: 0)>0 && (row?.openProblemCount ?: 0)==0)
                             matrixAdvantageContent
                         else
                             Color.Unspecified
