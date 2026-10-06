@@ -152,7 +152,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] `data.json` içindeki fotoğraf `localUri` değerleri Android cihaz URI'sına bağımlı değildir.
 - [ ] Eski `.sitepack` dosyası geriye dönük olarak hâlâ içe aktarılabilir.
 
-## 15. Dayanıklılık
+## 16. Dayanıklılık
 
 - [ ] Veri girerken uygulama force-stop edilip yeniden açılır.
 - [ ] Son kaydedilmiş veri korunur.
