@@ -103,10 +103,11 @@ data class NoteEntity(
     val createdAt: Long
 )
 
-@Entity(tableName = "photos", indices=[Index("blockWorkItemId")])
+@Entity(tableName = "photos", indices=[Index("blockWorkItemId"), Index("problemRecordId")])
 data class PhotoEntity(
     @PrimaryKey val id: String,
     val blockWorkItemId: String,
+    val problemRecordId: String? = null,
     val localUri: String,
     val caption: String? = null,
     val includeInReport: Boolean = true,
