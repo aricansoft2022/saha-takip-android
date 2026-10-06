@@ -94,6 +94,7 @@ class SitePackManager(
             remap(tables,maps)
             restorePhotos(tempRoot,tables,maps.photos,newProject)
             insertTables(tables)
+            database.invalidationTracker.refreshAsync()
             return newProject
         }finally{
             tempRoot.deleteRecursively()
