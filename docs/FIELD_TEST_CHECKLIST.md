@@ -79,7 +79,21 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] İkinci not ilk notu ezmeden kronolojiye eklenir.
 - [ ] Rapora dahil kutusu oluştururken ve sonradan değiştirilebilir.
 
-## 9. Fotoğraflar
+## 9. Problem / avantaj kanıt fotoğrafları
+
+- [ ] Bir problem kaydında “Kanıt fotoğrafları” alanı görünür.
+- [ ] Aynı probleme art arda en az 5 fotoğraf eklenebilir.
+- [ ] Bir avantaj kaydına ayrıca birden fazla fotoğraf eklenebilir.
+- [ ] Problem A'ya eklenen fotoğraf Problem B veya Avantaj C altında görünmez.
+- [ ] Kapalı problem/avantajın mevcut fotoğrafları korunur.
+- [ ] Kapalı problem/avantaja yeni kanıt fotoğrafı eklenebilir.
+- [ ] Her kanıt fotoğrafının “Rapora dahil” kutusu bağımsız çalışır.
+- [ ] PDF'de kanıt fotoğrafları doğru problem/avantajın altında görünür.
+- [ ] XLSX Fotoğraflar sayfasında bağlı problem/avantaj kodu ve tanımı görünür.
+- [ ] GKTE export/import sonrası fotoğraf → problem/avantaj bağı korunur.
+- [ ] v2 → v3 veritabanı migration mevcut genel fotoğrafları kaybetmez.
+
+## 10. Genel imalat fotoğrafları
 
 - [ ] TEST-1 → bir imalat detayından kamera açılır.
 - [ ] Fotoğraf çekilir ve imalat ekranına döner.
@@ -90,7 +104,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Uygulama yeniden açılınca fotoğraf okunabilir.
 - [ ] Dikey ve yatay çekilen fotoğraflar raporda kabul edilebilir yönde görünür.
 
-## 10. Bağımsız blok parametreleri
+## 11. Bağımsız blok parametreleri
 
 - [ ] Yeni parametre tanımlanır: `Yatay tava var mı?`.
 - [ ] TEST-1 değeri `Evet`, TEST-2 değeri `Hayır` yapılır.
@@ -98,7 +112,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Tooltip açılır.
 - [ ] Aynı parametre tanımı başka blokta tekrar kullanılabilir.
 
-## 11. Matris
+## 12. Matris
 
 - [ ] Proje ekranından İmalat Matrisi açılır.
 - [ ] Yatay kaydırma çalışır.
@@ -111,7 +125,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Filtre temizlenince tüm matris geri gelir.
 - [ ] Bir hücreye dokununca doğru imalat detayına gider.
 
-## 12. PDF raporu
+## 13. PDF raporu
 
 - [ ] PDF dışa aktarılır.
 - [ ] Android paylaş menüsü açılır.
@@ -122,7 +136,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Fotoğraflar bozuk veya ezilmiş görünmez.
 - [ ] Uzun raporda sayfa geçişleri ve footer düzgündür.
 
-## 13. XLSX raporu
+## 14. XLSX raporu
 
 - [ ] XLSX dışa aktarılır.
 - [ ] Excel veya Google Sheets ile açılır.
@@ -131,7 +145,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Matris verileri uygulamayla eşleşir.
 - [ ] Rapora dahil olmayan kayıtlar export'a girmez.
 
-## 14. GKTE export / Android ↔ Android taşıma
+## 15. GKTE export / Android ↔ Android taşıma
 
 - [ ] Projede birkaç durum, problem, avantaj, not ve fotoğraf oluşturulur.
 - [ ] Proje menüsünden `.gkte` dosyası üretilir.
