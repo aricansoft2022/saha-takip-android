@@ -25,8 +25,11 @@
 - İmalatı yalnız bloğa / blok tipine / proje geneline yayma
 - İlerleme, kalite, kontrol ve bloke durumlarını bağımsız tutma
 - Tek dokunuşluk hızlı durumlar
-- Tekrar kullanılabilir problem kodu kataloğu
-- Duplicate problem kodu koruması
+- Elektrik / alakadar başka disiplin kalemi ayrımı
+- Başka disiplin kalemlerini listenin sonunda ayrı renkle gösterme
+- Problem + avantaj türünde tekrar kullanılabilir bulgu kataloğu
+- Açık problem ve açık avantajın bağımsız yaşam döngüsü
+- Duplicate bulgu kodu koruması
 - Tarihçeli notlar
 - Bağlama otomatik bağlı fotoğraf çekimi
 - Not/problem/fotoğraf için sonradan değiştirilebilir “Rapora dahil” seçimi
@@ -56,7 +59,7 @@ Kamera doğrudan bir imalat detay ekranından açılır. Bu nedenle fotoğraf ç
 ## Raporlar
 
 **PDF:** durumlar + rapora seçilmiş problem/not/fotoğraf kanıtları.  
-**XLSX:** İmalat Matrisi, Problemler, Notlar ve Fotoğraflar sayfaları.
+**XLSX:** İmalat Matrisi, Problemler, Avantajlar, Notlar ve Fotoğraflar sayfaları.
 
 ## Yedek
 
