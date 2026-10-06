@@ -92,8 +92,11 @@ Her fotoğrafın bağımsız “Rapora dahil” bayrağı vardır. PDF'de bulguy
 Blok tipi, imalat, problem ve blok parametresi tanımlarında kısa açıklama/tooltip alanı bulunur.
 Mobil yüzeyde bilgi ikonuyla açılır.
 
-## Anasayfa hızlı durum filtresi
-Proje listesi aşağıdaki canlı durum agregasyonlarıyla tek dokunuşla filtrelenebilir:
+## Anasayfa hızlı filtreler
+Anasayfada iki filtre birlikte kullanılabilir:
+
+1. **İmalat filtresi** — Tüm imalatlar veya belirli bir imalat (örn. Daire Pano).
+2. **Durum filtresi** — aşağıdaki canlı durum agregasyonları:
 
 - Tümü
 - Açık problem
@@ -103,7 +106,11 @@ Proje listesi aşağıdaki canlı durum agregasyonlarıyla tek dokunuşla filtre
 - Devam
 - Bitti
 
-Her proje kartında mevcut problem, avantaj, kusur, bloke, devam ve bitmiş imalat sayılarının kısa özeti görünür. Filtreler proje adından veya statik etiketten değil, proje içindeki gerçek saha kayıtlarından hesaplanır.
+İmalat filtresi seçiliyse durum filtresi yalnız o imalatın kayıtlarına uygulanır. Örneğin `Daire Pano + Açık problem`, başka bir imalatta problem bulunduğu için projeyi yanlışlıkla göstermez.
+
+İmalat seçimi aranabilir ve Türkçe büyük/küçük harf duyarsızdır. Her seçenek kaç projede bulunduğunu gösterir.
+
+Her proje kartındaki kısa durum özeti de seçilen imalata göre yeniden hesaplanır. Filtreler proje adından veya statik etiketten değil, proje içindeki gerçek saha kayıtlarından hesaplanır.
 
 ## İmalat matrisi
 Matris özet ve drill-down ekranıdır.
