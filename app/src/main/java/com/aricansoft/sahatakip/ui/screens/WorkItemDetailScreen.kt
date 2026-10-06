@@ -114,6 +114,14 @@ fun WorkItemDetailScreen(
                 }
             }
 
+            QuickStatusSection(
+                current=current,
+                onProgress={scope.launch{repository.setProgress(blockWorkItemId,it)}},
+                onQuality={scope.launch{repository.setQuality(blockWorkItemId,it)}},
+                onControl={scope.launch{repository.setControl(blockWorkItemId,it)}},
+                onBlocked={scope.launch{repository.setBlocked(blockWorkItemId,it)}}
+            )
+
             StatusSection(
                 title="İlerleme",
                 values=ProgressStatus.entries,
@@ -278,6 +286,80 @@ fun WorkItemDetailScreen(
                 showProblem=false
             }
         )
+    }
+}
+
+@Composable
+private fun QuickStatusSection(
+    current:com.aricansoft.sahatakip.data.db.BlockWorkItemEntity,
+    onProgress:(ProgressStatus)->Unit,
+    onQuality:(QualityStatus)->Unit,
+    onControl:(ControlStatus)->Unit,
+    onBlocked:(Boolean)->Unit
+){
+    Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+        Row(verticalAlignment=Alignment.CenterVertically){
+            Text("Hızlı durum",style=MaterialTheme.typography.titleSmall)
+            InfoTooltip("Hızlı seçim yalnızca ilgili ekseni değiştirir; diğer ilerleme, kalite, kontrol veya bloke bilgilerini silmez.")
+        }
+        LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            item{
+                FilterChip(
+                    selected=current.progressStatus==ProgressStatus.NOT_STARTED,
+                    onClick={onProgress(ProgressStatus.NOT_STARTED)},
+                    label={Text("Başlanmadı")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.progressStatus==ProgressStatus.IN_PROGRESS,
+                    onClick={onProgress(ProgressStatus.IN_PROGRESS)},
+                    label={Text("Devam")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.qualityStatus==QualityStatus.DEFECTIVE,
+                    onClick={onQuality(QualityStatus.DEFECTIVE)},
+                    label={Text("Kusurlu")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.qualityStatus==QualityStatus.CRITICAL_DEFECT,
+                    onClick={onQuality(QualityStatus.CRITICAL_DEFECT)},
+                    label={Text("Ağır kusurlu")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.progressStatus==ProgressStatus.FINISHED,
+                    onClick={onProgress(ProgressStatus.FINISHED)},
+                    label={Text("Bitti")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.controlStatus==ControlStatus.CANNOT_CHECK,
+                    onClick={onControl(ControlStatus.CANNOT_CHECK)},
+                    label={Text("Kontrol edilemedi")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.isBlocked,
+                    onClick={onBlocked(!current.isBlocked)},
+                    label={Text("Bloke")}
+                )
+            }
+            item{
+                FilterChip(
+                    selected=current.controlStatus==ControlStatus.ACCEPTED,
+                    onClick={onControl(ControlStatus.ACCEPTED)},
+                    label={Text("Kabul")}
+                )
+            }
+        }
     }
 }
 
