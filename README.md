@@ -31,7 +31,8 @@
 - Açık problem ve açık avantajın bağımsız yaşam döngüsü
 - Duplicate bulgu kodu koruması
 - Tarihçeli notlar
-- Bağlama otomatik bağlı fotoğraf çekimi
+- Bağlama otomatik bağlı genel fotoğraf çekimi
+- Her problem ve avantaja sınırsız kanıt fotoğrafı
 - Not/problem/fotoğraf için sonradan değiştirilebilir “Rapora dahil” seçimi
 - Tooltip / kısa açıklamalar
 - Proje bazlı özel blok parametreleri
