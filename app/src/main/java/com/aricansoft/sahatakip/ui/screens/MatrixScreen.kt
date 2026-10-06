@@ -4,6 +4,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -21,6 +23,15 @@ import com.aricansoft.sahatakip.data.db.ReportWorkItemRow
 import com.aricansoft.sahatakip.data.model.ProgressStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
 
+private enum class MatrixFilter(val label:String){
+    ALL("Tümü"),
+    OPEN_PROBLEM("Açık problem"),
+    DEFECTIVE("Kusurlu"),
+    BLOCKED("Bloke"),
+    IN_PROGRESS("Devam"),
+    FINISHED("Bitti")
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatrixScreen(
@@ -31,14 +42,43 @@ fun MatrixScreen(
 ){
     val blocks by remember(projectId){repository.observeBlocks(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
+    val blockTypes by remember(projectId){repository.observeBlockTypes(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
     val rows by remember(projectId){repository.observeProjectMatrixRows(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
 
-    val workNames=remember(rows){
-        rows.map{it.workItemName}.distinct().sorted()
+    var selectedBlockTypeId by rememberSaveable(projectId){mutableStateOf<String?>(null)}
+    var selectedFilter by rememberSaveable(projectId){mutableStateOf(MatrixFilter.ALL)}
+
+    LaunchedEffect(blockTypes,selectedBlockTypeId){
+        if(selectedBlockTypeId!=null && blockTypes.none{it.id==selectedBlockTypeId}){
+            selectedBlockTypeId=null
+        }
     }
-    val cellMap=remember(rows){
-        rows.associateBy{it.workItemName to it.blockCode}
+
+    val visibleBlocks=remember(blocks,selectedBlockTypeId){
+        if(selectedBlockTypeId==null) blocks else blocks.filter{it.blockTypeId==selectedBlockTypeId}
+    }
+    val visibleBlockCodes=remember(visibleBlocks){visibleBlocks.map{it.code}.toSet()}
+    val visibleRows=remember(rows,visibleBlockCodes,selectedFilter){
+        rows.filter{row->
+            row.blockCode in visibleBlockCodes && when(selectedFilter){
+                MatrixFilter.ALL -> true
+                MatrixFilter.OPEN_PROBLEM -> row.openProblemCount>0
+                MatrixFilter.DEFECTIVE ->
+                    row.qualityStatus==QualityStatus.DEFECTIVE ||
+                        row.qualityStatus==QualityStatus.CRITICAL_DEFECT
+                MatrixFilter.BLOCKED -> row.isBlocked
+                MatrixFilter.IN_PROGRESS -> row.progressStatus==ProgressStatus.IN_PROGRESS
+                MatrixFilter.FINISHED -> row.progressStatus==ProgressStatus.FINISHED
+            }
+        }
+    }
+    val workNames=remember(visibleRows){
+        visibleRows.map{it.workItemName}.distinct().sorted()
+    }
+    val cellMap=remember(visibleRows){
+        visibleRows.associateBy{it.workItemName to it.blockCode}
     }
     val horizontal=rememberScrollState()
     val vertical=rememberScrollState()
@@ -59,30 +99,101 @@ fun MatrixScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(vertical)
-                .horizontalScroll(horizontal)
-                .padding(8.dp)
         ){
-            Row{
-                HeaderCell("İmalat",180.dp)
-                blocks.forEach{block->HeaderCell(block.code,72.dp)}
-            }
-            workNames.forEach{workName->
-                Row{
-                    WorkNameCell(workName)
-                    blocks.forEach{block->
-                        MatrixCell(
-                            row=cellMap[workName to block.code],
-                            onClick=onWorkItem
+            MatrixFilters(
+                blockTypes=blockTypes.map{it.id to it.code},
+                selectedBlockTypeId=selectedBlockTypeId,
+                onBlockTypeSelected={selectedBlockTypeId=it},
+                selectedFilter=selectedFilter,
+                onFilterSelected={selectedFilter=it}
+            )
+
+            HorizontalDivider()
+
+            if(visibleBlocks.isEmpty()){
+                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                    Text("Seçili filtreye uygun blok yok.")
+                }
+            }else if(workNames.isEmpty()){
+                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                    Text("Seçili filtreye uygun imalat kaydı yok.")
+                }
+            }else{
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .horizontalScroll(horizontal)
+                        .verticalScroll(vertical)
+                        .padding(8.dp)
+                ){
+                    Column{
+                        Row{
+                            HeaderCell("İmalat",180.dp)
+                            visibleBlocks.forEach{block->HeaderCell(block.code,72.dp)}
+                        }
+                        workNames.forEach{workName->
+                            Row{
+                                WorkNameCell(workName)
+                                visibleBlocks.forEach{block->
+                                    MatrixCell(
+                                        row=cellMap[workName to block.code],
+                                        onClick=onWorkItem
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem",
+                            style=MaterialTheme.typography.bodySmall
                         )
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem",
-                style=MaterialTheme.typography.bodySmall
-            )
+        }
+    }
+}
+
+@Composable
+private fun MatrixFilters(
+    blockTypes:List<Pair<String,String>>,
+    selectedBlockTypeId:String?,
+    onBlockTypeSelected:(String?)->Unit,
+    selectedFilter:MatrixFilter,
+    onFilterSelected:(MatrixFilter)->Unit
+){
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),
+        verticalArrangement=Arrangement.spacedBy(8.dp)
+    ){
+        Text("Blok tipi",style=MaterialTheme.typography.labelLarge)
+        LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            item{
+                FilterChip(
+                    selected=selectedBlockTypeId==null,
+                    onClick={onBlockTypeSelected(null)},
+                    label={Text("Tümü")}
+                )
+            }
+            items(blockTypes,key={it.first}){type->
+                FilterChip(
+                    selected=selectedBlockTypeId==type.first,
+                    onClick={onBlockTypeSelected(type.first)},
+                    label={Text(type.second)}
+                )
+            }
+        }
+
+        Text("Görünüm",style=MaterialTheme.typography.labelLarge)
+        LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            items(MatrixFilter.entries,key={it.name}){filter->
+                FilterChip(
+                    selected=selectedFilter==filter,
+                    onClick={onFilterSelected(filter)},
+                    label={Text(filter.label)}
+                )
+            }
         }
     }
 }
