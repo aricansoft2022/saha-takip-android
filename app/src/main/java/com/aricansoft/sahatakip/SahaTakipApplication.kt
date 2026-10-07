@@ -30,6 +30,7 @@ class SahaTakipApplication:Application(){
     override fun onCreate(){
         super.onCreate()
         CoroutineScope(SupervisorJob()+Dispatchers.IO).launch{
+            sitePackManager.cleanupOrphanRestores()
             LegacyKonyaSeed.seedIfEmpty(database)
         }
     }
