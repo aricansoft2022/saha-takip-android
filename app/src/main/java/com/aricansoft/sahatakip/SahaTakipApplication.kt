@@ -20,7 +20,8 @@ class SahaTakipApplication:Application(){
                 SahaDatabase.MIGRATION_3_4,
                 SahaDatabase.MIGRATION_4_5,
                 SahaDatabase.MIGRATION_5_6,
-                SahaDatabase.MIGRATION_6_7
+                SahaDatabase.MIGRATION_6_7,
+                SahaDatabase.MIGRATION_7_8
             )
             .addCallback(SahaDatabase.CALLBACK)
             .build()
