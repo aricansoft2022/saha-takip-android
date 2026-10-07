@@ -21,6 +21,7 @@ data class BlockWorkItemRow(
     val isBlocked:Boolean,
     val openProblemCount:Int,
     val openAdvantageCount:Int,
+    val openDeficiencyCount:Int,
     val updatedAt:Long
 )
 
@@ -60,7 +61,8 @@ data class ProjectQuickStatusRow(
     val defectiveCount:Int,
     val blockedCount:Int,
     val openProblemCount:Int,
-    val openAdvantageCount:Int
+    val openAdvantageCount:Int,
+    val openDeficiencyCount:Int
 )
 
 data class ProjectWorkItemQuickStatusRow(
@@ -73,7 +75,8 @@ data class ProjectWorkItemQuickStatusRow(
     val defectiveCount:Int,
     val blockedCount:Int,
     val openProblemCount:Int,
-    val openAdvantageCount:Int
+    val openAdvantageCount:Int,
+    val openDeficiencyCount:Int
 )
 
 data class ReportWorkItemRow(
@@ -86,7 +89,8 @@ data class ReportWorkItemRow(
     val controlStatus:com.aricansoft.sahatakip.data.model.ControlStatus,
     val isBlocked:Boolean,
     val openProblemCount:Int,
-    val openAdvantageCount:Int
+    val openAdvantageCount:Int,
+    val openDeficiencyCount:Int
 )
 
 data class ReportProblemRow(
@@ -105,6 +109,43 @@ data class ReportProblemRow(
     val closedAt:Long?
 )
 
+data class ProjectDeficiencyRow(
+    val deficiencyId:String,
+    val blockWorkItemId:String,
+    val blockCode:String,
+    val workItemName:String,
+    val title:String,
+    val description:String?,
+    val floor:String?,
+    val unitNumber:String?,
+    val unitName:String?,
+    val responsible:String?,
+    val targetDate:String?,
+    val priority:com.aricansoft.sahatakip.data.model.DeficiencyPriority,
+    val status:com.aricansoft.sahatakip.data.model.DeficiencyStatus,
+    val includeInReport:Boolean,
+    val createdAt:Long,
+    val updatedAt:Long
+)
+
+data class ReportDeficiencyRow(
+    val deficiencyId:String,
+    val blockWorkItemId:String,
+    val blockCode:String,
+    val workItemName:String,
+    val title:String,
+    val description:String?,
+    val floor:String?,
+    val unitNumber:String?,
+    val unitName:String?,
+    val responsible:String?,
+    val targetDate:String?,
+    val priority:com.aricansoft.sahatakip.data.model.DeficiencyPriority,
+    val status:com.aricansoft.sahatakip.data.model.DeficiencyStatus,
+    val createdAt:Long,
+    val updatedAt:Long
+)
+
 data class ReportNoteRow(
     val blockWorkItemId:String,
     val text:String,
@@ -114,6 +155,7 @@ data class ReportNoteRow(
 data class ReportPhotoRow(
     val blockWorkItemId:String,
     val problemRecordId:String?,
+    val deficiencyId:String?,
     val localUri:String,
     val caption:String?,
     val createdAt:Long
@@ -180,7 +222,15 @@ interface SahaDao {
                 WHERE b.projectId=p.id
                   AND pr.status='OPEN'
                   AND pd.kind='ADVANTAGE'
-            ) AS openAdvantageCount
+            ) AS openAdvantageCount,
+            (
+                SELECT COUNT(*)
+                FROM deficiencies d
+                JOIN block_work_items bwi ON bwi.id=d.blockWorkItemId
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=p.id
+                  AND d.status!='VERIFIED'
+            ) AS openDeficiencyCount
         FROM projects p
         ORDER BY p.name
     """)
@@ -211,7 +261,13 @@ interface SahaDao {
                 WHERE pr.blockWorkItemId=bwi.id
                   AND pr.status='OPEN'
                   AND pd.kind='ADVANTAGE'
-            )) AS openAdvantageCount
+            )) AS openAdvantageCount,
+            SUM((
+                SELECT COUNT(*)
+                FROM deficiencies d
+                WHERE d.blockWorkItemId=bwi.id
+                  AND d.status!='VERIFIED'
+            )) AS openDeficiencyCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
@@ -258,6 +314,8 @@ interface SahaDao {
                (SELECT COUNT(*) FROM problem_records pr
                 JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
                 WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount,
+               (SELECT COUNT(*) FROM deficiencies d
+                WHERE d.blockWorkItemId=bwi.id AND d.status!='VERIFIED') AS openDeficiencyCount,
                bwi.updatedAt
         FROM block_work_items bwi
         JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
@@ -310,17 +368,83 @@ interface SahaDao {
     """)
     fun observeProblemRecords(blockWorkItemId:String):Flow<List<ProblemRecordRow>>
 
+    @Query("""
+        SELECT * FROM deficiencies
+        WHERE blockWorkItemId=:blockWorkItemId
+        ORDER BY
+            CASE status
+                WHEN 'OPEN' THEN 0
+                WHEN 'IN_PROGRESS' THEN 1
+                WHEN 'FIXED' THEN 2
+                ELSE 3
+            END,
+            CASE priority
+                WHEN 'CRITICAL' THEN 0
+                WHEN 'HIGH' THEN 1
+                ELSE 2
+            END,
+            updatedAt DESC
+    """)
+    fun observeDeficiencies(blockWorkItemId:String):Flow<List<DeficiencyEntity>>
+
+    @Query("SELECT * FROM deficiencies WHERE id=:id")
+    suspend fun getDeficiency(id:String):DeficiencyEntity?
+
+    @Query("""
+        SELECT
+            d.id AS deficiencyId,
+            d.blockWorkItemId,
+            b.code AS blockCode,
+            wid.name AS workItemName,
+            d.title,
+            d.description,
+            d.floor,
+            d.unitNumber,
+            d.unitName,
+            d.responsible,
+            d.targetDate,
+            d.priority,
+            d.status,
+            d.includeInReport,
+            d.createdAt,
+            d.updatedAt
+        FROM deficiencies d
+        JOIN block_work_items bwi ON bwi.id=d.blockWorkItemId
+        JOIN blocks b ON b.id=bwi.blockId
+        JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
+        WHERE b.projectId=:projectId
+        ORDER BY
+            CASE d.status
+                WHEN 'OPEN' THEN 0
+                WHEN 'IN_PROGRESS' THEN 1
+                WHEN 'FIXED' THEN 2
+                ELSE 3
+            END,
+            CASE d.priority
+                WHEN 'CRITICAL' THEN 0
+                WHEN 'HIGH' THEN 1
+                ELSE 2
+            END,
+            b.code,
+            wid.name,
+            d.updatedAt DESC
+    """)
+    fun observeProjectDeficiencies(projectId:String):Flow<List<ProjectDeficiencyRow>>
+
     @Query("SELECT * FROM problem_records WHERE id=:id")
     suspend fun getProblemRecord(id:String):ProblemRecordEntity?
 
     @Query("SELECT * FROM notes WHERE blockWorkItemId=:blockWorkItemId ORDER BY createdAt DESC")
     fun observeNotes(blockWorkItemId:String):Flow<List<NoteEntity>>
 
-    @Query("SELECT * FROM photos WHERE blockWorkItemId=:blockWorkItemId AND problemRecordId IS NULL ORDER BY createdAt DESC")
+    @Query("SELECT * FROM photos WHERE blockWorkItemId=:blockWorkItemId AND problemRecordId IS NULL AND deficiencyId IS NULL ORDER BY createdAt DESC")
     fun observePhotos(blockWorkItemId:String):Flow<List<PhotoEntity>>
 
     @Query("SELECT * FROM photos WHERE problemRecordId=:problemRecordId ORDER BY createdAt DESC")
     fun observeFindingPhotos(problemRecordId:String):Flow<List<PhotoEntity>>
+
+    @Query("SELECT * FROM photos WHERE deficiencyId=:deficiencyId ORDER BY createdAt DESC")
+    fun observeDeficiencyPhotos(deficiencyId:String):Flow<List<PhotoEntity>>
 
     @Query("""
         SELECT bad.id AS attributeDefinitionId, bad.key, bad.name, bad.tooltip, bav.value
@@ -361,7 +485,9 @@ interface SahaDao {
                 WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='PROBLEM') AS openProblemCount,
                (SELECT COUNT(*) FROM problem_records pr
                 JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
-                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount,
+               (SELECT COUNT(*) FROM deficiencies d
+                WHERE d.blockWorkItemId=bwi.id AND d.status!='VERIFIED') AS openDeficiencyCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN block_types bt ON bt.id=b.blockTypeId
@@ -380,7 +506,9 @@ interface SahaDao {
                 WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='PROBLEM') AS openProblemCount,
                (SELECT COUNT(*) FROM problem_records pr
                 JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
-                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount
+                WHERE pr.blockWorkItemId=bwi.id AND pr.status='OPEN' AND pd.kind='ADVANTAGE') AS openAdvantageCount,
+               (SELECT COUNT(*) FROM deficiencies d
+                WHERE d.blockWorkItemId=bwi.id AND d.status!='VERIFIED') AS openDeficiencyCount
         FROM block_work_items bwi
         JOIN blocks b ON b.id=bwi.blockId
         JOIN block_types bt ON bt.id=b.blockTypeId
@@ -404,6 +532,32 @@ interface SahaDao {
     suspend fun getReportProblems(projectId:String):List<ReportProblemRow>
 
     @Query("""
+        SELECT
+            d.id AS deficiencyId,
+            d.blockWorkItemId,
+            b.code AS blockCode,
+            wid.name AS workItemName,
+            d.title,
+            d.description,
+            d.floor,
+            d.unitNumber,
+            d.unitName,
+            d.responsible,
+            d.targetDate,
+            d.priority,
+            d.status,
+            d.createdAt,
+            d.updatedAt
+        FROM deficiencies d
+        JOIN block_work_items bwi ON bwi.id=d.blockWorkItemId
+        JOIN blocks b ON b.id=bwi.blockId
+        JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
+        WHERE b.projectId=:projectId AND d.includeInReport=1
+        ORDER BY b.code, wid.name, d.createdAt
+    """)
+    suspend fun getReportDeficiencies(projectId:String):List<ReportDeficiencyRow>
+
+    @Query("""
         SELECT n.blockWorkItemId, n.text, n.createdAt
         FROM notes n
         JOIN block_work_items bwi ON bwi.id=n.blockWorkItemId
@@ -414,7 +568,7 @@ interface SahaDao {
     suspend fun getReportNotes(projectId:String):List<ReportNoteRow>
 
     @Query("""
-        SELECT ph.blockWorkItemId, ph.problemRecordId, ph.localUri, ph.caption, ph.createdAt
+        SELECT ph.blockWorkItemId, ph.problemRecordId, ph.deficiencyId, ph.localUri, ph.caption, ph.createdAt
         FROM photos ph
         JOIN block_work_items bwi ON bwi.id=ph.blockWorkItemId
         JOIN blocks b ON b.id=bwi.blockId
@@ -426,6 +580,14 @@ interface SahaDao {
                   SELECT 1
                   FROM problem_records pr
                   WHERE pr.id=ph.problemRecordId AND pr.includeInReport=1
+              )
+          )
+          AND (
+              ph.deficiencyId IS NULL OR
+              EXISTS(
+                  SELECT 1
+                  FROM deficiencies d
+                  WHERE d.id=ph.deficiencyId AND d.includeInReport=1
               )
           )
         ORDER BY ph.createdAt
@@ -445,15 +607,20 @@ interface SahaDao {
 
     @Insert suspend fun insertProblemDefinition(item:ProblemDefinitionEntity)
     @Insert suspend fun insertProblemRecord(item:ProblemRecordEntity)
+    @Insert suspend fun insertDeficiency(item:DeficiencyEntity)
     @Insert suspend fun insertNote(item:NoteEntity)
     @Insert suspend fun insertPhoto(item:PhotoEntity)
     @Insert suspend fun insertAuditEvent(item:AuditEventEntity)
 
     @Update suspend fun updateBlockWorkItem(item:BlockWorkItemEntity)
     @Update suspend fun updateProblemRecord(item:ProblemRecordEntity)
+    @Update suspend fun updateDeficiency(item:DeficiencyEntity)
 
     @Query("UPDATE problem_records SET includeInReport=:include WHERE id=:id")
     suspend fun setProblemReportInclusion(id:String,include:Boolean)
+
+    @Query("UPDATE deficiencies SET includeInReport=:include WHERE id=:id")
+    suspend fun setDeficiencyReportInclusion(id:String,include:Boolean)
 
     @Query("UPDATE notes SET includeInReport=:include WHERE id=:id")
     suspend fun setNoteReportInclusion(id:String,include:Boolean)
