@@ -3,9 +3,11 @@ package com.aricansoft.sahatakip.data
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.db.BlockWorkItemEntity
 import com.aricansoft.sahatakip.data.db.PhotoEntity
 import com.aricansoft.sahatakip.data.db.SahaDatabase
+import com.aricansoft.sahatakip.data.model.ProgressStatus
 import com.aricansoft.sahatakip.data.model.WorkItemScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -150,9 +152,30 @@ class SahaRepositoryIntegrityTest {
     }
 
     @Test
-    fun importedProjectIdentityMustDifferFromSourcePolicyPrimitive(){
-        val source="project-source"
-        val remapped="project-"+UUID.randomUUID()
-        assertNotEquals(source,remapped)
+    fun gkteRoundTripCreatesIndependentProjectAndPreservesCoreData()=runBlocking{
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val project=repository.createProject("Round Trip")
+        val type=repository.createBlockType(project.id,"RT",null,null)
+        val block=repository.createBlock(project.id,type.id,1)
+        val definition=repository.createWorkItemAndAttach(
+            block.id,project.id,"Daire Pano",null,WorkItemScope.THIS_BLOCK
+        )
+        val bwi=database.sahaDao().observeBlockWorkItems(block.id).first()
+            .single{it.workItemDefinitionId==definition.id}
+        repository.setProgress(bwi.id,ProgressStatus.FINISHED)
+        repository.addNote(bwi.id,"Round-trip notu",true)
+
+        val manager=SitePackManager(context,database)
+        val packageUri=manager.exportGkte(project.id)
+        val importedProjectId=manager.importProject(packageUri)
+
+        assertNotEquals(project.id,importedProjectId)
+        val imported=repository.getProjectReportSnapshot(importedProjectId)
+        requireNotNull(imported)
+        assertEquals("Round Trip",imported.projectName)
+        assertEquals(1,imported.workItems.size)
+        assertEquals("Daire Pano",imported.workItems.single().workItemName)
+        assertEquals(ProgressStatus.FINISHED,imported.workItems.single().progressStatus)
+        assertEquals(listOf("Round-trip notu"),imported.notes.map{it.text})
     }
 }
