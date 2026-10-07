@@ -155,6 +155,13 @@ fun BlockScreen(
                                         color=MaterialTheme.colorScheme.error
                                     )
                                 }
+                                if(item.openDeficiencyCount>0){
+                                    Text(
+                                        "E"+if(item.openDeficiencyCount>1)item.openDeficiencyCount else "",
+                                        style=MaterialTheme.typography.labelMedium,
+                                        color=MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
                                 if(item.openAdvantageCount>0){
                                     Text(
                                         "A"+if(item.openAdvantageCount>1)item.openAdvantageCount else "",
