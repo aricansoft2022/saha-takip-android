@@ -21,7 +21,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.BlockAttributeDefinitionEntity
 import com.aricansoft.sahatakip.data.db.BlockAttributeRow
+import com.aricansoft.sahatakip.data.db.DeficiencyDefinitionEntity
+import com.aricansoft.sahatakip.data.db.ProblemDefinitionEntity
 import com.aricansoft.sahatakip.data.db.WorkItemDefinitionEntity
+import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProgressStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
 import com.aricansoft.sahatakip.data.model.WorkItemKind
@@ -54,6 +57,7 @@ fun BlockScreen(
     onWorkItem:(String)->Unit
 ){
     val scope=rememberCoroutineScope()
+    val snackbar=remember{SnackbarHostState()}
     val workItems by remember(blockId){repository.observeBlockWorkItems(blockId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val attributes by remember(blockId){repository.observeBlockAttributes(blockId)}
@@ -62,14 +66,22 @@ fun BlockScreen(
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val definitions by remember(projectId){repository.observeWorkItemDefinitions(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
+    val findingDefinitions by remember(projectId){repository.observeProblemDefinitions(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    val deficiencyDefinitions by remember(projectId){repository.observeDeficiencyDefinitions(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
     val block by produceState<com.aricansoft.sahatakip.data.db.BlockEntity?>(null,blockId){
         value=repository.getBlock(blockId)
     }
     var showAdd by remember{mutableStateOf(false)}
+    var addMenuExpanded by remember{mutableStateOf(false)}
+    var showFindingDefinitionKind by remember{mutableStateOf<FindingKind?>(null)}
+    var showDeficiencyDefinition by remember{mutableStateOf(false)}
     var showAddAttribute by remember{mutableStateOf(false)}
     var editAttribute by remember{mutableStateOf<BlockAttributeRow?>(null)}
 
     Scaffold(
+        snackbarHost={SnackbarHost(snackbar)},
         topBar={
             TopAppBar(
                 title={Text(block?.code ?: "Blok")},
@@ -79,8 +91,43 @@ fun BlockScreen(
                     }
                 },
                 actions={
-                    IconButton(onClick={showAdd=true}){
-                        Icon(Icons.Outlined.Add,contentDescription="İmalat ekle")
+                    Box{
+                        IconButton(onClick={addMenuExpanded=true}){
+                            Icon(Icons.Outlined.Add,contentDescription="Ekle")
+                        }
+                        DropdownMenu(
+                            expanded=addMenuExpanded,
+                            onDismissRequest={addMenuExpanded=false}
+                        ){
+                            DropdownMenuItem(
+                                text={Text("İmalat ekle")},
+                                onClick={
+                                    addMenuExpanded=false
+                                    showAdd=true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text={Text("Problem tanımı ekle")},
+                                onClick={
+                                    addMenuExpanded=false
+                                    showFindingDefinitionKind=FindingKind.PROBLEM
+                                }
+                            )
+                            DropdownMenuItem(
+                                text={Text("Avantaj tanımı ekle")},
+                                onClick={
+                                    addMenuExpanded=false
+                                    showFindingDefinitionKind=FindingKind.ADVANTAGE
+                                }
+                            )
+                            DropdownMenuItem(
+                                text={Text("Eksik tanımı ekle")},
+                                onClick={
+                                    addMenuExpanded=false
+                                    showDeficiencyDefinition=true
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -230,6 +277,53 @@ fun BlockScreen(
         )
     }
 
+    showFindingDefinitionKind?.let{kind->
+        FindingDefinitionCatalogDialog(
+            kind=kind,
+            definitions=findingDefinitions,
+            onDismiss={showFindingDefinitionKind=null},
+            onCreate={code,title,tooltip->
+                scope.launch{
+                    runCatching{
+                        repository.createProblemDefinition(
+                            projectId=projectId,
+                            code=code,
+                            title=title,
+                            tooltip=tooltip,
+                            kind=kind
+                        )
+                    }.onSuccess{
+                        showFindingDefinitionKind=null
+                    }.onFailure{
+                        snackbar.showSnackbar(it.message ?: "Tanım oluşturulamadı.")
+                    }
+                }
+            }
+        )
+    }
+
+    if(showDeficiencyDefinition){
+        DeficiencyDefinitionCatalogDialog(
+            definitions=deficiencyDefinitions,
+            onDismiss={showDeficiencyDefinition=false},
+            onCreate={title,description->
+                scope.launch{
+                    runCatching{
+                        repository.createDeficiencyDefinition(
+                            projectId=projectId,
+                            title=title,
+                            description=description
+                        )
+                    }.onSuccess{
+                        showDeficiencyDefinition=false
+                    }.onFailure{
+                        snackbar.showSnackbar(it.message ?: "Eksik tanımı oluşturulamadı.")
+                    }
+                }
+            }
+        )
+    }
+
     if(showAddAttribute){
         AddAttributeDialog(
             definitions=attributeDefinitions,
@@ -256,6 +350,132 @@ fun BlockScreen(
             }
         )
     }
+}
+
+@Composable
+private fun FindingDefinitionCatalogDialog(
+    kind:FindingKind,
+    definitions:List<ProblemDefinitionEntity>,
+    onDismiss:()->Unit,
+    onCreate:(String,String,String?)->Unit
+){
+    val label=if(kind==FindingKind.ADVANTAGE)"Avantaj" else "Problem"
+    val trLocale=remember{Locale.forLanguageTag("tr-TR")}
+    var code by remember(kind){mutableStateOf("")}
+    var title by remember(kind){mutableStateOf("")}
+    var tooltip by remember(kind){mutableStateOf("")}
+    val normalizedCode=code.trim().uppercase(trLocale)
+    val existing=definitions.firstOrNull{
+        normalizedCode.isNotBlank() && it.code.uppercase(trLocale)==normalizedCode
+    }
+
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text(label+" tanımı ekle")},
+        text={
+            Column(
+                Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement=Arrangement.spacedBy(8.dp)
+            ){
+                Text(
+                    "Bu tanım proje kataloğuna eklenir; herhangi bir imalata otomatik saha kaydı açmaz.",
+                    style=MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value=code,
+                    onValueChange={code=it},
+                    label={Text("Kod")},
+                    modifier=Modifier.fillMaxWidth(),
+                    singleLine=true
+                )
+                if(existing!=null){
+                    Text(
+                        existing.code+" kodu zaten "+existing.kind.label.lowercase(trLocale)+" olarak tanımlı.",
+                        color=MaterialTheme.colorScheme.error,
+                        style=MaterialTheme.typography.bodySmall
+                    )
+                }
+                OutlinedTextField(
+                    value=title,
+                    onValueChange={title=it},
+                    label={Text("Tanım")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value=tooltip,
+                    onValueChange={tooltip=it},
+                    label={Text("Tooltip / açıklama (opsiyonel)")},
+                    modifier=Modifier.fillMaxWidth(),
+                    minLines=2
+                )
+            }
+        },
+        confirmButton={
+            TextButton(
+                onClick={onCreate(code,title,tooltip.trim().ifBlank{null})},
+                enabled=code.isNotBlank() && title.isNotBlank() && existing==null
+            ){Text("Tanımı kaydet")}
+        },
+        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
+    )
+}
+
+@Composable
+private fun DeficiencyDefinitionCatalogDialog(
+    definitions:List<DeficiencyDefinitionEntity>,
+    onDismiss:()->Unit,
+    onCreate:(String,String?)->Unit
+){
+    val trLocale=remember{Locale.forLanguageTag("tr-TR")}
+    var title by remember{mutableStateOf("")}
+    var description by remember{mutableStateOf("")}
+    val normalized=title.trim().lowercase(trLocale)
+    val existing=definitions.firstOrNull{
+        normalized.isNotBlank() && it.title.trim().lowercase(trLocale)==normalized
+    }
+
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text("Eksik tanımı ekle")},
+        text={
+            Column(
+                Modifier.heightIn(max=480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement=Arrangement.spacedBy(8.dp)
+            ){
+                Text(
+                    "Bu tanım proje kataloğuna eklenir; daha sonra imalat eksiği açarken tekrar seçilebilir.",
+                    style=MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    value=title,
+                    onValueChange={title=it},
+                    label={Text("Eksik / yapılacak iş tanımı")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+                if(existing!=null){
+                    Text(
+                        "Bu eksik tanımı zaten mevcut.",
+                        color=MaterialTheme.colorScheme.error,
+                        style=MaterialTheme.typography.bodySmall
+                    )
+                }
+                OutlinedTextField(
+                    value=description,
+                    onValueChange={description=it},
+                    label={Text("Varsayılan açıklama (opsiyonel)")},
+                    modifier=Modifier.fillMaxWidth(),
+                    minLines=2
+                )
+            }
+        },
+        confirmButton={
+            TextButton(
+                onClick={onCreate(title,description.trim().ifBlank{null})},
+                enabled=title.isNotBlank() && existing==null
+            ){Text("Tanımı kaydet")}
+        },
+        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
+    )
 }
 
 @Composable
