@@ -41,6 +41,7 @@ import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.report.ReportExporter
 import com.aricansoft.sahatakip.report.XlsxExporter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -83,6 +84,22 @@ fun ProjectScreen(
     var selectedProblemKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
     var selectedAdvantageKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
     var selectedDeficiencyKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
+    var matrixLoaded by remember(projectId){mutableStateOf(false)}
+    var findingsLoaded by remember(projectId){mutableStateOf(false)}
+    var deficienciesLoaded by remember(projectId){mutableStateOf(false)}
+
+    LaunchedEffect(projectId){
+        repository.observeProjectMatrixRows(projectId).first()
+        matrixLoaded=true
+    }
+    LaunchedEffect(projectId){
+        repository.observeProjectFindings(projectId).first()
+        findingsLoaded=true
+    }
+    LaunchedEffect(projectId){
+        repository.observeProjectDeficiencies(projectId).first()
+        deficienciesLoaded=true
+    }
 
     val workItemOptions=remember(matrixRows){
         matrixRows
@@ -105,8 +122,8 @@ fun ProjectScreen(
         selectedWorkItemKey?.let{key->workItemOptions.firstOrNull{it.key==key}}
     }
 
-    LaunchedEffect(workItemOptions,selectedWorkItemKey){
-        if(selectedWorkItemKey!=null && workItemOptions.none{it.key==selectedWorkItemKey}){
+    LaunchedEffect(matrixLoaded,workItemOptions,selectedWorkItemKey){
+        if(matrixLoaded && selectedWorkItemKey!=null && workItemOptions.none{it.key==selectedWorkItemKey}){
             selectedWorkItemKey=null
             selectedWorkItemStatus=HomeQuickFilter.ALL
         }
@@ -162,14 +179,20 @@ fun ProjectScreen(
             .sortedBy{it.label.lowercase(trLocale)}
     }
 
-    LaunchedEffect(problemOptions,selectedProblemKey){
-        if(selectedProblemKey!=null && problemOptions.none{it.key==selectedProblemKey}) selectedProblemKey=null
+    LaunchedEffect(findingsLoaded,problemOptions,selectedProblemKey){
+        if(findingsLoaded && selectedProblemKey!=null && problemOptions.none{it.key==selectedProblemKey}){
+            selectedProblemKey=null
+        }
     }
-    LaunchedEffect(advantageOptions,selectedAdvantageKey){
-        if(selectedAdvantageKey!=null && advantageOptions.none{it.key==selectedAdvantageKey}) selectedAdvantageKey=null
+    LaunchedEffect(findingsLoaded,advantageOptions,selectedAdvantageKey){
+        if(findingsLoaded && selectedAdvantageKey!=null && advantageOptions.none{it.key==selectedAdvantageKey}){
+            selectedAdvantageKey=null
+        }
     }
-    LaunchedEffect(deficiencyOptions,selectedDeficiencyKey){
-        if(selectedDeficiencyKey!=null && deficiencyOptions.none{it.key==selectedDeficiencyKey}) selectedDeficiencyKey=null
+    LaunchedEffect(deficienciesLoaded,deficiencyOptions,selectedDeficiencyKey){
+        if(deficienciesLoaded && selectedDeficiencyKey!=null && deficiencyOptions.none{it.key==selectedDeficiencyKey}){
+            selectedDeficiencyKey=null
+        }
     }
 
     val problemBlockCodes=remember(scopedFindings,selectedProblemKey){
