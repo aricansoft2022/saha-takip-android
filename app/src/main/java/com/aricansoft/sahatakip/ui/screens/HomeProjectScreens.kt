@@ -298,6 +298,64 @@ fun ProjectScreen(
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val blockTypes by remember(projectId){repository.observeBlockTypes(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
+    val matrixRows by remember(projectId){repository.observeProjectMatrixRows(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+
+    var selectedWorkItemKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
+    var selectedWorkItemStatus by rememberSaveable(projectId){mutableStateOf(HomeQuickFilter.ALL)}
+    var workItemMenuExpanded by remember{mutableStateOf(false)}
+    var workItemSearch by remember{mutableStateOf("")}
+
+    val workItemOptions=remember(matrixRows){
+        matrixRows
+            .groupBy{normalizedWorkItemName(it.workItemName)}
+            .map{entry->
+                val representative=entry.value.first()
+                ProjectWorkItemOption(
+                    key=entry.key,
+                    label=representative.workItemName,
+                    kind=representative.workItemKind,
+                    blockCount=entry.value.map{it.blockCode}.distinct().size
+                )
+            }
+            .sortedWith(
+                compareBy<ProjectWorkItemOption>{if(it.kind==WorkItemKind.ELECTRICAL)0 else 1}
+                    .thenBy{it.label.lowercase(trLocale)}
+            )
+    }
+    val selectedWorkItem=remember(workItemOptions,selectedWorkItemKey){
+        selectedWorkItemKey?.let{key->workItemOptions.firstOrNull{it.key==key}}
+    }
+
+    LaunchedEffect(workItemOptions,selectedWorkItemKey){
+        if(selectedWorkItemKey!=null && workItemOptions.none{it.key==selectedWorkItemKey}){
+            selectedWorkItemKey=null
+            selectedWorkItemStatus=HomeQuickFilter.ALL
+        }
+    }
+
+    val selectedRowsByBlockCode=remember(matrixRows,selectedWorkItemKey){
+        val key=selectedWorkItemKey
+        if(key==null){
+            emptyMap()
+        }else{
+            matrixRows
+                .filter{normalizedWorkItemName(it.workItemName)==key}
+                .associateBy{it.blockCode}
+        }
+    }
+
+    val visibleBlocks=remember(blocks,selectedRowsByBlockCode,selectedWorkItemKey,selectedWorkItemStatus){
+        if(selectedWorkItemKey==null){
+            blocks
+        }else{
+            blocks.filter{block->
+                val row=selectedRowsByBlockCode[block.code] ?: return@filter false
+                selectedWorkItemStatus==HomeQuickFilter.ALL ||
+                    row.asHomeCounts().matches(selectedWorkItemStatus)
+            }
+        }
+    }
 
     fun exportBackup(){
         if(backingUp) return
@@ -432,22 +490,171 @@ fun ProjectScreen(
             }
         }
     ){padding->
-        LazyColumn(
-            modifier=Modifier.fillMaxSize().padding(padding),
-            contentPadding=PaddingValues(12.dp),
-            verticalArrangement=Arrangement.spacedBy(8.dp)
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
         ){
-            items(blocks,key={it.id}){block->
-                Card(
-                    modifier=Modifier.fillMaxWidth().clickable{onBlock(block.id)}
+            Surface(tonalElevation=1.dp){
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),
+                    verticalArrangement=Arrangement.spacedBy(8.dp)
                 ){
-                    Row(
-                        Modifier.fillMaxWidth().padding(16.dp),
-                        horizontalArrangement=Arrangement.SpaceBetween,
-                        verticalAlignment=Alignment.CenterVertically
-                    ){
-                        Text(block.code,style=MaterialTheme.typography.titleMedium)
-                        Text("İmalatlar →",style=MaterialTheme.typography.labelLarge)
+                    Text("İmalat filtresi",style=MaterialTheme.typography.labelLarge)
+                    Box(Modifier.fillMaxWidth()){
+                        OutlinedButton(
+                            onClick={workItemMenuExpanded=true},
+                            modifier=Modifier.fillMaxWidth()
+                        ){
+                            Column(Modifier.weight(1f),horizontalAlignment=Alignment.Start){
+                                Text(selectedWorkItem?.label ?: "Tüm imalatlar")
+                                selectedWorkItem?.let{option->
+                                    Text(
+                                        (if(option.kind==WorkItemKind.RELATED_DISCIPLINE)
+                                            "Alakadar başka disiplin · "
+                                        else
+                                            "")+
+                                            option.blockCount+" blok",
+                                        style=MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                            }
+                            Text("▼")
+                        }
+                        DropdownMenu(
+                            expanded=workItemMenuExpanded,
+                            onDismissRequest={
+                                workItemMenuExpanded=false
+                                workItemSearch=""
+                            },
+                            modifier=Modifier.fillMaxWidth()
+                        ){
+                            DropdownMenuItem(
+                                text={Text("Tüm imalatlar")},
+                                onClick={
+                                    selectedWorkItemKey=null
+                                    selectedWorkItemStatus=HomeQuickFilter.ALL
+                                    workItemMenuExpanded=false
+                                    workItemSearch=""
+                                }
+                            )
+                            HorizontalDivider()
+                            OutlinedTextField(
+                                value=workItemSearch,
+                                onValueChange={workItemSearch=it},
+                                label={Text("İmalat ara")},
+                                modifier=Modifier.padding(horizontal=8.dp).fillMaxWidth(),
+                                singleLine=true
+                            )
+                            val normalizedSearch=normalizedWorkItemName(workItemSearch)
+                            val visibleOptions=workItemOptions.filter{option->
+                                normalizedSearch.isBlank() ||
+                                    normalizedWorkItemName(option.label).contains(normalizedSearch)
+                            }
+                            visibleOptions.forEach{option->
+                                DropdownMenuItem(
+                                    text={
+                                        Column{
+                                            Text(option.label)
+                                            Text(
+                                                (if(option.kind==WorkItemKind.RELATED_DISCIPLINE)
+                                                    "Alakadar başka disiplin · "
+                                                else
+                                                    "")+
+                                                    option.blockCount+" blok",
+                                                style=MaterialTheme.typography.labelSmall
+                                            )
+                                        }
+                                    },
+                                    onClick={
+                                        selectedWorkItemKey=option.key
+                                        selectedWorkItemStatus=HomeQuickFilter.ALL
+                                        workItemMenuExpanded=false
+                                        workItemSearch=""
+                                    }
+                                )
+                            }
+                            if(visibleOptions.isEmpty()){
+                                DropdownMenuItem(
+                                    text={Text("Eşleşen imalat yok")},
+                                    onClick={},
+                                    enabled=false
+                                )
+                            }
+                        }
+                    }
+
+                    selectedWorkItem?.let{option->
+                        Text("Seçili imalat durumu",style=MaterialTheme.typography.labelLarge)
+                        LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                            items(HomeQuickFilter.entries,key={it.name}){filter->
+                                val count=blocks.count{block->
+                                    val row=selectedRowsByBlockCode[block.code]
+                                    row!=null && (
+                                        filter==HomeQuickFilter.ALL ||
+                                            row.asHomeCounts().matches(filter)
+                                    )
+                                }
+                                FilterChip(
+                                    selected=selectedWorkItemStatus==filter,
+                                    onClick={selectedWorkItemStatus=filter},
+                                    label={Text(filter.label+" ("+count+")")}
+                                )
+                            }
+                        }
+                        Text(
+                            "Filtre yalnız “"+option.label+"” imalatının bloklardaki gerçek durumuna uygulanır.",
+                            style=MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            if(visibleBlocks.isEmpty()){
+                Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
+                    Text(
+                        if(selectedWorkItem==null)
+                            "Projede blok yok."
+                        else
+                            "Seçili imalat ve durumda blok yok."
+                    )
+                }
+            }else{
+                LazyColumn(
+                    modifier=Modifier.fillMaxSize(),
+                    contentPadding=PaddingValues(12.dp),
+                    verticalArrangement=Arrangement.spacedBy(8.dp)
+                ){
+                    items(visibleBlocks,key={it.id}){block->
+                        val selectedRow=selectedRowsByBlockCode[block.code]
+                        Card(
+                            modifier=Modifier.fillMaxWidth().clickable{onBlock(block.id)}
+                        ){
+                            Row(
+                                Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalArrangement=Arrangement.SpaceBetween,
+                                verticalAlignment=Alignment.CenterVertically
+                            ){
+                                Column(Modifier.weight(1f)){
+                                    Text(block.code,style=MaterialTheme.typography.titleMedium)
+                                    selectedRow?.let{row->
+                                        val detail=buildList{
+                                            add(row.progressStatus.label)
+                                            val summary=row.asHomeCounts().summaryText()
+                                            if(summary.isNotBlank()) add(summary)
+                                        }.joinToString(" · ")
+                                        Text(
+                                            selectedWorkItem?.label.orEmpty()+" — "+detail,
+                                            style=MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                                Text(
+                                    if(selectedWorkItem==null)"İmalatlar →" else "İmalatı aç →",
+                                    style=MaterialTheme.typography.labelLarge
+                                )
+                            }
+                        }
                     }
                 }
             }
