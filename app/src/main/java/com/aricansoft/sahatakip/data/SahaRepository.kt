@@ -394,7 +394,6 @@ class SahaRepository(private val dao:SahaDao){
         floor:String?=null,
         unitNumber:String?=null,
         unitName:String?=null,
-        responsible:String?=null,
         targetDate:String?=null,
         priority:DeficiencyPriority=DeficiencyPriority.NORMAL,
         includeInReport:Boolean=true
