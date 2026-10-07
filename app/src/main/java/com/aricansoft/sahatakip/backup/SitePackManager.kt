@@ -198,6 +198,9 @@ class SitePackManager(
             if(!tables.has("deficiency_definitions")){
                 tables.put("deficiency_definitions",JSONArray())
             }
+            if(tables.has("deficiencies")){
+                forEachRow(tables,"deficiencies"){it.remove("responsible")}
+            }
             validateImportGraph(tables,strictPackage)
             if(!tables.has("deficiencies")){
                 tables.put("deficiencies",JSONArray())
@@ -304,7 +307,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",7)
+            .put("databaseVersion",8)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
