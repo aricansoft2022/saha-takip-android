@@ -41,6 +41,19 @@ enum class ProblemRecordStatus {
     CLOSED
 }
 
+enum class DeficiencyStatus(val label:String) {
+    OPEN("Açık"),
+    IN_PROGRESS("Gideriliyor"),
+    FIXED("Giderildi"),
+    VERIFIED("Kontrol edildi")
+}
+
+enum class DeficiencyPriority(val label:String) {
+    NORMAL("Normal"),
+    HIGH("Yüksek"),
+    CRITICAL("Kritik")
+}
+
 enum class AuditEventType {
     CREATED,
     STATUS_CHANGED,
@@ -49,5 +62,7 @@ enum class AuditEventType {
     PROBLEM_CLOSED,
     ADVANTAGE_OPENED,
     ADVANTAGE_CLOSED,
+    DEFICIENCY_CREATED,
+    DEFICIENCY_STATUS_CHANGED,
     PHOTO_ADDED
 }
