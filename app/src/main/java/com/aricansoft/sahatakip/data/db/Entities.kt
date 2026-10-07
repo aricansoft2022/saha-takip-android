@@ -193,7 +193,6 @@ data class DeficiencyEntity(
     val floor: String? = null,
     val unitNumber: String? = null,
     val unitName: String? = null,
-    val responsible: String? = null,
     val targetDate: String? = null,
     val priority: DeficiencyPriority = DeficiencyPriority.NORMAL,
     val status: DeficiencyStatus = DeficiencyStatus.OPEN,
