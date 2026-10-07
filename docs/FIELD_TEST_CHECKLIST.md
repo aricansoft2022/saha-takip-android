@@ -58,6 +58,9 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 
 - [ ] Yeni imalat oluştururken “Alakadar başka disiplin kalemi” işaretlenebilir.
 - [ ] Başka disiplin kalemleri blok listesinin sonunda ve farklı zeminle görünür.
+- [ ] Başka disiplin kalemi Başlanmadı ise blok imalat kartının arka planı yeşildir.
+- [ ] Yeşil kartta `LEHİMİZE BAŞLANMADI` etiketi görünür.
+- [ ] Aynı kayıtta açık problem veya aktif eksik varsa uyarı rengi yeşilden önceliklidir.
 - [ ] Bir başka-disiplin kalemine açık problem eklenebilir.
 - [ ] Aynı kaleme açık avantaj eklenebilir.
 - [ ] Problem ve avantaj birbirini silmez; ikisi aynı anda açık kalabilir.
