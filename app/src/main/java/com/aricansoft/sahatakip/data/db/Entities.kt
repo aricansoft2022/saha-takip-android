@@ -158,6 +158,24 @@ data class ProblemRecordEntity(
 )
 
 @Entity(
+    tableName = "deficiency_definitions",
+    indices=[Index("projectId"), Index(value=["projectId","title"], unique=true)],
+    foreignKeys = [ForeignKey(
+        entity=ProjectEntity::class,
+        parentColumns=["id"],
+        childColumns=["projectId"],
+        onDelete=ForeignKey.RESTRICT
+    )]
+)
+data class DeficiencyDefinitionEntity(
+    @PrimaryKey val id: String,
+    val projectId: String,
+    val title: String,
+    val description: String? = null,
+    val active: Boolean = true
+)
+
+@Entity(
     tableName = "deficiencies",
     indices=[Index("blockWorkItemId"), Index("status"), Index("targetDate")],
     foreignKeys = [ForeignKey(
