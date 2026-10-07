@@ -16,13 +16,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BlockWorkItemEntity::class,
         ProblemDefinitionEntity::class,
         ProblemRecordEntity::class,
+        DeficiencyEntity::class,
         NoteEntity::class,
         PhotoEntity::class,
         BlockAttributeDefinitionEntity::class,
         BlockAttributeValueEntity::class,
         AuditEventEntity::class
     ],
-    version=4,
+    version=5,
     exportSchema=true
 )
 @TypeConverters(Converters::class)
@@ -96,6 +97,35 @@ abstract class SahaDatabase:RoomDatabase(){
                 db.execSQL("ALTER TABLE problem_records ADD COLUMN floor TEXT")
                 db.execSQL("ALTER TABLE problem_records ADD COLUMN unitNumber TEXT")
                 db.execSQL("ALTER TABLE problem_records ADD COLUMN unitName TEXT")
+            }
+        }
+
+        val MIGRATION_4_5=object:Migration(4,5){
+            override fun migrate(db:SupportSQLiteDatabase){
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS deficiencies (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        blockWorkItemId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        floor TEXT,
+                        unitNumber TEXT,
+                        unitName TEXT,
+                        responsible TEXT,
+                        targetDate TEXT,
+                        priority TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        includeInReport INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_deficiencies_blockWorkItemId ON deficiencies(blockWorkItemId)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_deficiencies_status ON deficiencies(status)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_deficiencies_targetDate ON deficiencies(targetDate)")
+
+                db.execSQL("ALTER TABLE photos ADD COLUMN deficiencyId TEXT")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_photos_deficiencyId ON photos(deficiencyId)")
             }
         }
     }
