@@ -32,7 +32,7 @@ import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
 import com.aricansoft.sahatakip.data.db.ProjectQuickStatusRow
-import com.aricansoft.sahatakip.data.db.ProjectWorkItemQuickStatusRow
+import com.aricansoft.sahatakip.data.db.ReportWorkItemRow
 import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.report.ReportExporter
 import com.aricansoft.sahatakip.report.XlsxExporter
@@ -63,11 +63,11 @@ private data class HomeStatusCounts(
     val openAdvantages:Int
 )
 
-private data class HomeWorkItemOption(
+private data class ProjectWorkItemOption(
     val key:String,
     val label:String,
     val kind:WorkItemKind,
-    val projectCount:Int
+    val blockCount:Int
 )
 
 private val trLocale=Locale.forLanguageTag("tr-TR")
@@ -84,26 +84,15 @@ private fun ProjectQuickStatusRow.asHomeCounts()=HomeStatusCounts(
     openAdvantages=openAdvantageCount
 )
 
-private fun ProjectWorkItemQuickStatusRow.asHomeCounts()=HomeStatusCounts(
-    total=totalWorkItemCount,
-    inProgress=inProgressCount,
-    finished=finishedCount,
-    defective=defectiveCount,
-    blocked=blockedCount,
+private fun ReportWorkItemRow.asHomeCounts()=HomeStatusCounts(
+    total=1,
+    inProgress=if(progressStatus.name=="IN_PROGRESS")1 else 0,
+    finished=if(progressStatus.name=="FINISHED")1 else 0,
+    defective=if(qualityStatus.name=="DEFECTIVE" || qualityStatus.name=="CRITICAL_DEFECT")1 else 0,
+    blocked=if(isBlocked)1 else 0,
     openProblems=openProblemCount,
     openDeficiencies=openDeficiencyCount,
     openAdvantages=openAdvantageCount
-)
-
-private fun Iterable<HomeStatusCounts>.sumHomeCounts()=HomeStatusCounts(
-    total=sumOf{it.total},
-    inProgress=sumOf{it.inProgress},
-    finished=sumOf{it.finished},
-    defective=sumOf{it.defective},
-    blocked=sumOf{it.blocked},
-    openProblems=sumOf{it.openProblems},
-    openDeficiencies=sumOf{it.openDeficiencies},
-    openAdvantages=sumOf{it.openAdvantages}
 )
 
 private fun HomeStatusCounts.matches(filter:HomeQuickFilter)=when(filter){
@@ -137,69 +126,19 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
     val projects by repository.observeProjects().collectAsStateWithLifecycle(initialValue=emptyList())
     val quickStatuses by repository.observeProjectQuickStatuses()
         .collectAsStateWithLifecycle(initialValue=emptyList())
-    val workItemQuickStatuses by repository.observeProjectWorkItemQuickStatuses()
-        .collectAsStateWithLifecycle(initialValue=emptyList())
     var selectedQuickFilter by rememberSaveable{mutableStateOf(HomeQuickFilter.ALL)}
-    var selectedWorkItemKey by rememberSaveable{mutableStateOf<String?>(null)}
-    var workItemMenuExpanded by remember{mutableStateOf(false)}
-    var workItemSearch by remember{mutableStateOf("")}
     var showAdd by remember{mutableStateOf(false)}
     var importing by remember{mutableStateOf(false)}
 
-    val globalStatusByProject=remember(quickStatuses){
+    val statusByProject=remember(quickStatuses){
         quickStatuses.associate{it.projectId to it.asHomeCounts()}
     }
-    val workItemOptions=remember(workItemQuickStatuses){
-        workItemQuickStatuses
-            .groupBy{normalizedWorkItemName(it.workItemName)}
-            .map{entry->
-                val rows=entry.value
-                val representative=rows.first()
-                HomeWorkItemOption(
-                    key=entry.key,
-                    label=representative.workItemName,
-                    kind=representative.workItemKind,
-                    projectCount=rows.map{it.projectId}.distinct().size
-                )
-            }
-            .sortedWith(
-                compareBy<HomeWorkItemOption>{if(it.kind==WorkItemKind.ELECTRICAL)0 else 1}
-                    .thenBy{it.label.lowercase(trLocale)}
-            )
-    }
-    val selectedWorkItem=remember(workItemOptions,selectedWorkItemKey){
-        selectedWorkItemKey?.let{key->workItemOptions.firstOrNull{it.key==key}}
-    }
-
-    LaunchedEffect(workItemOptions,selectedWorkItemKey){
-        if(selectedWorkItemKey!=null && workItemOptions.none{it.key==selectedWorkItemKey}){
-            selectedWorkItemKey=null
-        }
-    }
-
-    val selectedWorkItemStatusByProject=remember(workItemQuickStatuses,selectedWorkItemKey){
-        val key=selectedWorkItemKey
-        if(key==null){
-            emptyMap()
+    val visibleProjects=remember(projects,statusByProject,selectedQuickFilter){
+        if(selectedQuickFilter==HomeQuickFilter.ALL){
+            projects
         }else{
-            workItemQuickStatuses
-                .filter{normalizedWorkItemName(it.workItemName)==key}
-                .groupBy{it.projectId}
-                .mapValues{entry->entry.value.map{it.asHomeCounts()}.sumHomeCounts()}
-        }
-    }
-    val activeStatusByProject=if(selectedWorkItemKey==null){
-        globalStatusByProject
-    }else{
-        selectedWorkItemStatusByProject
-    }
-    val visibleProjects=remember(projects,activeStatusByProject,selectedQuickFilter,selectedWorkItemKey){
-        projects.filter{project->
-            val counts=activeStatusByProject[project.id]
-            when{
-                selectedWorkItemKey!=null && counts==null -> false
-                selectedQuickFilter==HomeQuickFilter.ALL -> counts!=null || selectedWorkItemKey==null
-                else -> counts?.matches(selectedQuickFilter)==true
+            projects.filter{project->
+                statusByProject[project.id]?.matches(selectedQuickFilter)==true
             }
         }
     }
@@ -260,93 +199,14 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                     Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=8.dp),
                     verticalArrangement=Arrangement.spacedBy(6.dp)
                 ){
-                    Text("İmalat filtresi",style=MaterialTheme.typography.labelLarge)
-                    Box(Modifier.fillMaxWidth()){
-                        OutlinedButton(
-                            onClick={workItemMenuExpanded=true},
-                            modifier=Modifier.fillMaxWidth()
-                        ){
-                            Column(Modifier.weight(1f),horizontalAlignment=Alignment.Start){
-                                Text(selectedWorkItem?.label ?: "Tüm imalatlar")
-                                if(selectedWorkItem?.kind==WorkItemKind.RELATED_DISCIPLINE){
-                                    Text(
-                                        "Alakadar başka disiplin",
-                                        style=MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                            Text("▼")
-                        }
-                        DropdownMenu(
-                            expanded=workItemMenuExpanded,
-                            onDismissRequest={
-                                workItemMenuExpanded=false
-                                workItemSearch=""
-                            },
-                            modifier=Modifier.fillMaxWidth()
-                        ){
-                            DropdownMenuItem(
-                                text={Text("Tüm imalatlar ("+projects.size+" proje)")},
-                                onClick={
-                                    selectedWorkItemKey=null
-                                    workItemMenuExpanded=false
-                                    workItemSearch=""
-                                }
-                            )
-                            HorizontalDivider()
-                            OutlinedTextField(
-                                value=workItemSearch,
-                                onValueChange={workItemSearch=it},
-                                label={Text("İmalat ara")},
-                                modifier=Modifier.padding(horizontal=8.dp).fillMaxWidth(),
-                                singleLine=true
-                            )
-                            val normalizedSearch=normalizedWorkItemName(workItemSearch)
-                            val visibleOptions=workItemOptions.filter{
-                                normalizedSearch.isBlank() ||
-                                    normalizedWorkItemName(it.label).contains(normalizedSearch)
-                            }
-                            visibleOptions.forEach{option->
-                                DropdownMenuItem(
-                                    text={
-                                        Column{
-                                            Text(option.label)
-                                            Text(
-                                                (if(option.kind==WorkItemKind.RELATED_DISCIPLINE)
-                                                    "Alakadar başka disiplin · "
-                                                else
-                                                    "")+
-                                                    option.projectCount+" proje",
-                                                style=MaterialTheme.typography.labelSmall
-                                            )
-                                        }
-                                    },
-                                    onClick={
-                                        selectedWorkItemKey=option.key
-                                        workItemMenuExpanded=false
-                                        workItemSearch=""
-                                    }
-                                )
-                            }
-                            if(visibleOptions.isEmpty()){
-                                DropdownMenuItem(
-                                    text={Text("Eşleşen imalat yok")},
-                                    onClick={},
-                                    enabled=false
-                                )
-                            }
-                        }
-                    }
-
                     Text("Hızlı durum filtresi",style=MaterialTheme.typography.labelLarge)
                     LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         items(HomeQuickFilter.entries,key={it.name}){filter->
-                            val count=projects.count{project->
-                                val counts=activeStatusByProject[project.id]
-                                when{
-                                    selectedWorkItemKey!=null && counts==null -> false
-                                    filter==HomeQuickFilter.ALL -> counts!=null || selectedWorkItemKey==null
-                                    else -> counts?.matches(filter)==true
+                            val count=if(filter==HomeQuickFilter.ALL){
+                                projects.size
+                            }else{
+                                projects.count{project->
+                                    statusByProject[project.id]?.matches(filter)==true
                                 }
                             }
                             FilterChip(
@@ -355,12 +215,6 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                                 label={Text(filter.label+" ("+count+")")}
                             )
                         }
-                    }
-                    if(selectedWorkItem!=null){
-                        Text(
-                            "Durum filtresi yalnız “"+selectedWorkItem.label+"” kayıtlarına uygulanır.",
-                            style=MaterialTheme.typography.bodySmall
-                        )
                     }
                 }
             }
@@ -371,12 +225,7 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                 }
             }else if(visibleProjects.isEmpty()){
                 Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
-                    Text(
-                        if(selectedWorkItem==null)
-                            "Seçili durumda proje yok."
-                        else
-                            "Seçili imalat ve durumda proje yok."
-                    )
+                    Text("Seçili durumda proje yok.")
                 }
             }else{
                 LazyColumn(
@@ -385,7 +234,7 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                     verticalArrangement=Arrangement.spacedBy(12.dp)
                 ){
                     items(visibleProjects,key={it.id}){project->
-                        val quick=activeStatusByProject[project.id]
+                        val quick=statusByProject[project.id]
                         ElevatedCard(
                             modifier=Modifier.fillMaxWidth().clickable{onProject(project.id)}
                         ){
@@ -397,16 +246,9 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)){
                                     Text(project.name,style=MaterialTheme.typography.titleMedium)
-                                    selectedWorkItem?.let{
-                                        Text(it.label,style=MaterialTheme.typography.labelMedium)
-                                    }
                                     val summary=quick?.summaryText().orEmpty()
                                     Text(
-                                        when{
-                                            quick==null -> "Seçili imalat bu projede yok"
-                                            summary.isBlank() -> "Henüz durum kaydı yok"
-                                            else -> summary
-                                        },
+                                        if(summary.isBlank())"Henüz durum kaydı yok" else summary,
                                         style=MaterialTheme.typography.bodySmall
                                     )
                                 }
