@@ -110,6 +110,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Her eksik fotoğrafının Rapora dahil seçimi bağımsız çalışır.
 - [ ] Proje ekranındaki Eksik Takibi açılır ve tüm blok/imalat eksiklerini listeler.
 - [ ] Proje eksik ekranında Aktif / Açık / Gideriliyor / Giderildi / Kontrol edildi filtreleri çalışır.
+- [ ] Öncelik filtresi Tümü / Normal / Yüksek / Kritik olarak durum filtresiyle birlikte çalışır.
 - [ ] Blok, imalat, mahal veya sorumlu metniyle arama çalışır.
 - [ ] Bir eksik kartına dokununca doğru imalat detayına gider.
 - [ ] Anasayfada Açık eksik filtresi doğru projeleri getirir.
