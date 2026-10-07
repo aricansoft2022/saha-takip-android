@@ -24,7 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BlockAttributeValueEntity::class,
         AuditEventEntity::class
     ],
-    version=7,
+    version=8,
     exportSchema=true
 )
 @TypeConverters(Converters::class)
@@ -386,6 +386,80 @@ abstract class SahaDatabase:RoomDatabase(){
                 """.trimIndent())
                 db.execSQL("CREATE INDEX IF NOT EXISTS index_deficiency_definitions_projectId ON deficiency_definitions(projectId)")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_deficiency_definitions_projectId_title ON deficiency_definitions(projectId,title)")
+            }
+        }
+
+        val MIGRATION_7_8=object:Migration(7,8){
+            override fun migrate(db:SupportSQLiteDatabase){
+                db.execSQL("""
+                    CREATE TABLE deficiencies_new (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        blockWorkItemId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        floor TEXT,
+                        unitNumber TEXT,
+                        unitName TEXT,
+                        targetDate TEXT,
+                        priority TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        includeInReport INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        FOREIGN KEY(blockWorkItemId) REFERENCES block_work_items(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO deficiencies_new(
+                        id,blockWorkItemId,title,description,floor,unitNumber,unitName,
+                        targetDate,priority,status,includeInReport,createdAt,updatedAt
+                    )
+                    SELECT
+                        id,blockWorkItemId,title,description,floor,unitNumber,unitName,
+                        targetDate,priority,status,includeInReport,createdAt,updatedAt
+                    FROM deficiencies
+                """.trimIndent())
+
+                db.execSQL("""
+                    CREATE TABLE photos_backup AS
+                    SELECT id,blockWorkItemId,problemRecordId,deficiencyId,localUri,caption,includeInReport,createdAt
+                    FROM photos
+                """.trimIndent())
+                db.execSQL("DROP TABLE photos")
+                db.execSQL("DROP TABLE deficiencies")
+                db.execSQL("ALTER TABLE deficiencies_new RENAME TO deficiencies")
+
+                db.execSQL("""
+                    CREATE TABLE photos (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        blockWorkItemId TEXT NOT NULL,
+                        problemRecordId TEXT,
+                        deficiencyId TEXT,
+                        localUri TEXT NOT NULL,
+                        caption TEXT,
+                        includeInReport INTEGER NOT NULL,
+                        createdAt INTEGER NOT NULL,
+                        FOREIGN KEY(blockWorkItemId) REFERENCES block_work_items(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                        FOREIGN KEY(problemRecordId) REFERENCES problem_records(id) ON UPDATE NO ACTION ON DELETE RESTRICT,
+                        FOREIGN KEY(deficiencyId) REFERENCES deficiencies(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    INSERT INTO photos(
+                        id,blockWorkItemId,problemRecordId,deficiencyId,localUri,caption,includeInReport,createdAt
+                    )
+                    SELECT id,blockWorkItemId,problemRecordId,deficiencyId,localUri,caption,includeInReport,createdAt
+                    FROM photos_backup
+                """.trimIndent())
+                db.execSQL("DROP TABLE photos_backup")
+
+                db.execSQL("CREATE INDEX index_deficiencies_blockWorkItemId ON deficiencies(blockWorkItemId)")
+                db.execSQL("CREATE INDEX index_deficiencies_status ON deficiencies(status)")
+                db.execSQL("CREATE INDEX index_deficiencies_targetDate ON deficiencies(targetDate)")
+                db.execSQL("CREATE INDEX index_photos_blockWorkItemId ON photos(blockWorkItemId)")
+                db.execSQL("CREATE INDEX index_photos_problemRecordId ON photos(problemRecordId)")
+                db.execSQL("CREATE INDEX index_photos_deficiencyId ON photos(deficiencyId)")
+                installIntegrityTriggers(db)
             }
         }
 
