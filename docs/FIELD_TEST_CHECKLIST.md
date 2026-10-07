@@ -81,6 +81,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Bloke açılıp kapatılabilir.
 - [ ] “Bitti + Kusurlu + Bloke” aynı anda saklanabilir.
 - [ ] Uygulama yeniden açılınca durumlar aynı kalır.
+- [ ] v5 → v6 güncellemesinde mevcut proje, imalat, problem/avantaj, eksik, not ve fotoğraf ilişkileri korunur.
 
 ## 8. Problem kataloğu ve saha bağlamı
 
@@ -224,6 +225,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Saha Takip dosyayı açabilecek uygulama olarak görünür; tek uygun handler ise doğrudan açılır.
 - [ ] GKTE içe aktarılır ve yeni projenin ekranı otomatik açılır.
 - [ ] Yeni bağımsız proje oluşur; mevcut proje ezilmez.
+- [ ] Aynı GKTE dosyası ekran döndürme / Activity yeniden yaratılması nedeniyle ikinci kez otomatik içe alınmaz.
 - [ ] Bloklar ve imalat durumları eşleşir.
 - [ ] Problem/avantaj/eksik/not kayıtları eşleşir.
 - [ ] Eksik durum, sorumlu, hedef tarih, öncelik ve fotoğraf ilişkileri eşleşir.
@@ -231,6 +233,8 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] İçe aktarılmış projeden tekrar PDF/XLSX alınabilir.
 - [ ] İçe aktarılmış projeden yeniden `.gkte` alınabilir.
 - [ ] Yeni GKTE arşivinde `manifest.json`, `data.json` ve varsa `photos/` bulunur.
+- [ ] Kaynak fotoğraflardan biri okunamıyorsa GKTE eksik fotoğrafla sessizce başarıya ulaşmaz.
+- [ ] Yeni GKTE'de payload ve fotoğraf SHA-256/size doğrulamaları geçer.
 - [ ] `data.json` içindeki fotoğraf `localUri` değerleri Android cihaz URI'sına bağımlı değildir.
 - [ ] Eski `.sitepack` dosyası geriye dönük olarak hâlâ içe aktarılabilir.
 
