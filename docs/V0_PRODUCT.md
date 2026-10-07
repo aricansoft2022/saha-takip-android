@@ -69,6 +69,8 @@ Elektrik işi olmayan fakat elektrik işinin yapılabilirliğini, maliyetini vey
 - Elektrik kalemlerinden sonra listelenir.
 - Ayrı renkle gösterilir.
 - Normal ilerleme bilgisi saklanabilir.
+- `Başlanmadı` durumundaki alakadar başka disiplin kalemi lehimize durum kabul edilir; blok imalat listesinde yeşil arka plan ve `LEHİMİZE BAŞLANMADI` etiketiyle gösterilir.
+- Açık problem veya aktif eksik varsa uyarı rengi bu yeşil avantaj renginden önceliklidir.
 - Açık problem ve açık avantaj aynı kalem üzerinde bağımsız kayıtlar olarak bulunabilir.
 - Matris üzerinde `P` açık problemi, `A` açık avantajı gösterir.
 
