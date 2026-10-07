@@ -65,7 +65,10 @@ fun ProjectScreen(
     var exportingXlsx by remember{mutableStateOf(false)}
     var backingUp by remember{mutableStateOf(false)}
     var actionMenu by remember{mutableStateOf(false)}
+    var addMenuExpanded by remember{mutableStateOf(false)}
     var showAddBlock by remember{mutableStateOf(false)}
+    var showFindingDefinitionKind by remember{mutableStateOf<FindingKind?>(null)}
+    var showDeficiencyDefinition by remember{mutableStateOf(false)}
     val blocks by remember(projectId){repository.observeBlocks(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val blockTypes by remember(projectId){repository.observeBlockTypes(projectId)}
@@ -75,6 +78,10 @@ fun ProjectScreen(
     val projectFindings by remember(projectId){repository.observeProjectFindings(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val projectDeficiencies by remember(projectId){repository.observeProjectDeficiencies(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    val findingDefinitions by remember(projectId){repository.observeProblemDefinitions(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    val deficiencyDefinitions by remember(projectId){repository.observeDeficiencyDefinitions(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
 
     var selectedWorkItemKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
@@ -386,8 +393,43 @@ fun ProjectScreen(
             )
         },
         floatingActionButton={
-            FloatingActionButton(onClick={showAddBlock=true}){
-                Icon(Icons.Outlined.Add,contentDescription="Blok ekle")
+            Box{
+                FloatingActionButton(onClick={addMenuExpanded=true}){
+                    Icon(Icons.Outlined.Add,contentDescription="Ekle")
+                }
+                DropdownMenu(
+                    expanded=addMenuExpanded,
+                    onDismissRequest={addMenuExpanded=false}
+                ){
+                    DropdownMenuItem(
+                        text={Text("Blok ekle")},
+                        onClick={
+                            addMenuExpanded=false
+                            showAddBlock=true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text={Text("Problem tanımı ekle")},
+                        onClick={
+                            addMenuExpanded=false
+                            showFindingDefinitionKind=FindingKind.PROBLEM
+                        }
+                    )
+                    DropdownMenuItem(
+                        text={Text("Avantaj tanımı ekle")},
+                        onClick={
+                            addMenuExpanded=false
+                            showFindingDefinitionKind=FindingKind.ADVANTAGE
+                        }
+                    )
+                    DropdownMenuItem(
+                        text={Text("Eksik tanımı ekle")},
+                        onClick={
+                            addMenuExpanded=false
+                            showDeficiencyDefinition=true
+                        }
+                    )
+                }
             }
         }
     ){padding->
@@ -611,6 +653,53 @@ fun ProjectScreen(
                 }
             }
         }
+    }
+
+    showFindingDefinitionKind?.let{kind->
+        FindingDefinitionCatalogDialog(
+            kind=kind,
+            definitions=findingDefinitions,
+            onDismiss={showFindingDefinitionKind=null},
+            onCreate={code,title,tooltip->
+                scope.launch{
+                    runCatching{
+                        repository.createProblemDefinition(
+                            projectId=projectId,
+                            code=code,
+                            title=title,
+                            tooltip=tooltip,
+                            kind=kind
+                        )
+                    }.onSuccess{
+                        showFindingDefinitionKind=null
+                    }.onFailure{
+                        snackbar.showSnackbar(it.message ?: "Tanım oluşturulamadı.")
+                    }
+                }
+            }
+        )
+    }
+
+    if(showDeficiencyDefinition){
+        DeficiencyDefinitionCatalogDialog(
+            definitions=deficiencyDefinitions,
+            onDismiss={showDeficiencyDefinition=false},
+            onCreate={title,description->
+                scope.launch{
+                    runCatching{
+                        repository.createDeficiencyDefinition(
+                            projectId=projectId,
+                            title=title,
+                            description=description
+                        )
+                    }.onSuccess{
+                        showDeficiencyDefinition=false
+                    }.onFailure{
+                        snackbar.showSnackbar(it.message ?: "Eksik tanımı oluşturulamadı.")
+                    }
+                }
+            }
+        )
     }
 
     if(showAddBlock){
