@@ -111,6 +111,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Kat, mahal/daire/birim no ve adı girilebilir.
 - [ ] Sorumlu kişi/ekip girilebilir.
 - [ ] Hedef tarih `YYYY-AA-GG` biçiminde girilebilir.
+- [ ] Takvimde var olmayan tarih (`2026-02-30`, `2026-99-99`) kaydedilemez.
 - [ ] Açılmış eksikte açıklama, konum, sorumlu, hedef tarih ve öncelik sonradan düzenlenebilir.
 - [ ] Eksik düzenlemek durum yaşam döngüsünü sıfırlamaz.
 - [ ] Öncelik Normal / Yüksek / Kritik seçilebilir.
@@ -237,7 +238,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 
 - [ ] Veri girerken uygulama force-stop edilip yeniden açılır.
 - [ ] Son kaydedilmiş veri korunur.
-- [ ] Çok sayıda fotoğraf bulunan blokta liste kullanılabilir kalır.
+- [ ] Çok sayıda yüksek çözünürlüklü fotoğraf bulunan blokta liste kullanılabilir kalır; thumbnail açılışı bellek taşmasına yol açmaz.
 - [ ] Geri tuşu/navigation beklenmeyen kayıt kaybı yaratmaz.
 - [ ] Paylaş menüsünden vazgeçilince uygulama normal çalışmaya devam eder.
 

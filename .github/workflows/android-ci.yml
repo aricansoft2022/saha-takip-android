@@ -27,6 +27,10 @@ jobs:
           cache: gradle
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+      - name: Android lint
+        run: ./gradlew :app:lintDebug --stacktrace
       - name: Assemble debug
         run: ./gradlew :app:assembleDebug --stacktrace
       - name: Upload debug APK
@@ -34,5 +38,12 @@ jobs:
         with:
           name: saha-takip-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload Room schemas
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-schemas
+          path: app/schemas/*.json
           if-no-files-found: error
           retention-days: 7

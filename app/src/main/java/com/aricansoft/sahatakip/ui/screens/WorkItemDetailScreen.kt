@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
+import com.aricansoft.sahatakip.data.isValidTargetDate
 import com.aricansoft.sahatakip.data.db.DeficiencyEntity
 import com.aricansoft.sahatakip.data.db.ProblemDefinitionEntity
 import com.aricansoft.sahatakip.data.db.ProblemRecordRow
@@ -41,7 +42,6 @@ import com.aricansoft.sahatakip.ui.formatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.max
 
@@ -862,7 +862,7 @@ private fun DeficiencyDialog(
     var targetDate by remember(initial?.id){mutableStateOf(initial?.targetDate.orEmpty())}
     var priority by remember(initial?.id){mutableStateOf(initial?.priority ?: DeficiencyPriority.NORMAL)}
     var include by remember(initial?.id){mutableStateOf(initial?.includeInReport ?: true)}
-    val targetValid=targetDate.isBlank() || runCatching{LocalDate.parse(targetDate.trim())}.isSuccess
+    val targetValid=isValidTargetDate(targetDate)
 
     AlertDialog(
         onDismissRequest=onDismiss,

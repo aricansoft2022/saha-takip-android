@@ -3,8 +3,6 @@ package com.aricansoft.sahatakip.data
 import com.aricansoft.sahatakip.data.db.*
 import com.aricansoft.sahatakip.data.model.*
 import com.aricansoft.sahatakip.report.ProjectReportSnapshot
-import java.time.LocalDate
-import java.time.format.DateTimeParseException
 import java.util.Locale
 import java.util.UUID
 
@@ -468,19 +466,6 @@ class SahaRepository(private val dao:SahaDao){
         val now=System.currentTimeMillis()
         dao.updateBlockWorkItem(current.transform().copy(updatedAt=now))
         audit(id,AuditEventType.STATUS_CHANGED,detail,now)
-    }
-
-    private fun normalizeWorkItemName(value:String)=
-        value.trim().lowercase(Locale.forLanguageTag("tr-TR"))
-
-    private fun validateTargetDate(value:String?):String?{
-        val clean=value?.trim()?.ifBlank{null} ?: return null
-        try{
-            LocalDate.parse(clean)
-        }catch(_:DateTimeParseException){
-            throw IllegalArgumentException("Hedef tarih geçerli bir YYYY-AA-GG tarihi olmalı.")
-        }
-        return clean
     }
 
     private suspend fun audit(blockWorkItemId:String,type:AuditEventType,detail:String,at:Long){
