@@ -17,9 +17,12 @@ class SahaRepository(private val dao:SahaDao){
     fun observeWorkItemDefinitions(projectId:String)=dao.observeWorkItemDefinitions(projectId)
     fun observeProblemDefinitions(projectId:String)=dao.observeProblemDefinitions(projectId)
     fun observeProblemRecords(blockWorkItemId:String)=dao.observeProblemRecords(blockWorkItemId)
+    fun observeDeficiencies(blockWorkItemId:String)=dao.observeDeficiencies(blockWorkItemId)
+    fun observeProjectDeficiencies(projectId:String)=dao.observeProjectDeficiencies(projectId)
     fun observeNotes(blockWorkItemId:String)=dao.observeNotes(blockWorkItemId)
     fun observePhotos(blockWorkItemId:String)=dao.observePhotos(blockWorkItemId)
     fun observeFindingPhotos(problemRecordId:String)=dao.observeFindingPhotos(problemRecordId)
+    fun observeDeficiencyPhotos(deficiencyId:String)=dao.observeDeficiencyPhotos(deficiencyId)
     fun observeBlockAttributes(blockId:String)=dao.observeBlockAttributes(blockId)
     fun observeBlockAttributeDefinitions(projectId:String)=dao.observeBlockAttributeDefinitions(projectId)
     fun observeProjectMatrixRows(projectId:String)=dao.observeProjectMatrixRows(projectId)
@@ -140,6 +143,7 @@ class SahaRepository(private val dao:SahaDao){
             generatedAt=System.currentTimeMillis(),
             workItems=dao.getReportWorkItems(projectId),
             problems=dao.getReportProblems(projectId),
+            deficiencies=dao.getReportDeficiencies(projectId),
             notes=dao.getReportNotes(projectId),
             photos=dao.getReportPhotos(projectId)
         )
@@ -293,6 +297,64 @@ class SahaRepository(private val dao:SahaDao){
         )
     }
 
+    suspend fun createDeficiency(
+        blockWorkItemId:String,
+        title:String,
+        description:String?=null,
+        floor:String?=null,
+        unitNumber:String?=null,
+        unitName:String?=null,
+        responsible:String?=null,
+        targetDate:String?=null,
+        priority:DeficiencyPriority=DeficiencyPriority.NORMAL,
+        includeInReport:Boolean=true
+    ):DeficiencyEntity{
+        val cleanTitle=title.trim()
+        require(cleanTitle.isNotBlank()){"Eksik tanımı boş olamaz."}
+        val cleanTarget=targetDate?.trim()?.ifBlank{null}
+        if(cleanTarget!=null){
+            require(Regex("""\d{4}-\d{2}-\d{2}""").matches(cleanTarget)){
+                "Hedef tarih YYYY-AA-GG biçiminde olmalı."
+            }
+        }
+        val now=System.currentTimeMillis()
+        val item=DeficiencyEntity(
+            id="def-"+UUID.randomUUID(),
+            blockWorkItemId=blockWorkItemId,
+            title=cleanTitle,
+            description=description?.trim()?.ifBlank{null},
+            floor=floor?.trim()?.ifBlank{null},
+            unitNumber=unitNumber?.trim()?.ifBlank{null},
+            unitName=unitName?.trim()?.ifBlank{null},
+            responsible=responsible?.trim()?.ifBlank{null},
+            targetDate=cleanTarget,
+            priority=priority,
+            status=DeficiencyStatus.OPEN,
+            includeInReport=includeInReport,
+            createdAt=now,
+            updatedAt=now
+        )
+        dao.insertDeficiency(item)
+        audit(blockWorkItemId,AuditEventType.DEFICIENCY_CREATED,"Eksik açıldı: "+cleanTitle,now)
+        return item
+    }
+
+    suspend fun setDeficiencyStatus(id:String,status:DeficiencyStatus){
+        val current=dao.getDeficiency(id) ?: return
+        if(current.status==status) return
+        val now=System.currentTimeMillis()
+        dao.updateDeficiency(current.copy(status=status,updatedAt=now))
+        audit(
+            current.blockWorkItemId,
+            AuditEventType.DEFICIENCY_STATUS_CHANGED,
+            "Eksik durumu: "+status.label+" — "+current.title,
+            now
+        )
+    }
+
+    suspend fun setDeficiencyReportInclusion(id:String,include:Boolean)=
+        dao.setDeficiencyReportInclusion(id,include)
+
     suspend fun closeProblem(recordId:String){
         val record=dao.getProblemRecord(recordId) ?: return
         if(record.status==ProblemRecordStatus.CLOSED) return
@@ -312,7 +374,8 @@ class SahaRepository(private val dao:SahaDao){
         blockWorkItemId:String,
         uri:String,
         includeInReport:Boolean=true,
-        problemRecordId:String?=null
+        problemRecordId:String?=null,
+        deficiencyId:String?=null
     ){
         val now=System.currentTimeMillis()
         dao.insertPhoto(
@@ -320,6 +383,7 @@ class SahaRepository(private val dao:SahaDao){
                 id=UUID.randomUUID().toString(),
                 blockWorkItemId=blockWorkItemId,
                 problemRecordId=problemRecordId,
+                deficiencyId=deficiencyId,
                 localUri=uri,
                 includeInReport=includeInReport,
                 createdAt=now
@@ -328,7 +392,11 @@ class SahaRepository(private val dao:SahaDao){
         audit(
             blockWorkItemId,
             AuditEventType.PHOTO_ADDED,
-            if(problemRecordId==null)"İmalat fotoğrafı eklendi" else "Problem/avantaj kanıt fotoğrafı eklendi",
+            when{
+                deficiencyId!=null -> "Eksik kanıt fotoğrafı eklendi"
+                problemRecordId!=null -> "Problem/avantaj kanıt fotoğrafı eklendi"
+                else -> "İmalat fotoğrafı eklendi"
+            },
             now
         )
     }
