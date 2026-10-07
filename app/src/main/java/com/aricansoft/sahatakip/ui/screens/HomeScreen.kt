@@ -32,10 +32,8 @@ import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.normalizeWorkItemName
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
-import com.aricansoft.sahatakip.data.db.ProjectEntity
 import com.aricansoft.sahatakip.data.db.ProjectQuickStatusRow
 import com.aricansoft.sahatakip.data.db.ReportWorkItemRow
-import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.report.ReportExporter
 import com.aricansoft.sahatakip.report.XlsxExporter
@@ -55,10 +53,7 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
     val quickStatuses by repository.observeProjectQuickStatuses()
         .collectAsStateWithLifecycle(initialValue=emptyList())
     var selectedQuickFilter by rememberSaveable{mutableStateOf(HomeQuickFilter.ALL)}
-    var addMenuExpanded by remember{mutableStateOf(false)}
-    var showAddProject by remember{mutableStateOf(false)}
-    var showFindingDefinitionKind by remember{mutableStateOf<FindingKind?>(null)}
-    var showDeficiencyDefinition by remember{mutableStateOf(false)}
+    var showAdd by remember{mutableStateOf(false)}
     var importing by remember{mutableStateOf(false)}
 
     val statusByProject=remember(quickStatuses){
@@ -115,46 +110,8 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
             )
         },
         floatingActionButton={
-            Box{
-                FloatingActionButton(onClick={addMenuExpanded=true}){
-                    Icon(Icons.Outlined.Add,contentDescription="Ekle")
-                }
-                DropdownMenu(
-                    expanded=addMenuExpanded,
-                    onDismissRequest={addMenuExpanded=false}
-                ){
-                    DropdownMenuItem(
-                        text={Text("Proje ekle")},
-                        onClick={
-                            addMenuExpanded=false
-                            showAddProject=true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text={Text("Problem tanımı ekle")},
-                        enabled=projects.isNotEmpty(),
-                        onClick={
-                            addMenuExpanded=false
-                            showFindingDefinitionKind=FindingKind.PROBLEM
-                        }
-                    )
-                    DropdownMenuItem(
-                        text={Text("Avantaj tanımı ekle")},
-                        enabled=projects.isNotEmpty(),
-                        onClick={
-                            addMenuExpanded=false
-                            showFindingDefinitionKind=FindingKind.ADVANTAGE
-                        }
-                    )
-                    DropdownMenuItem(
-                        text={Text("Eksik tanımı ekle")},
-                        enabled=projects.isNotEmpty(),
-                        onClick={
-                            addMenuExpanded=false
-                            showDeficiencyDefinition=true
-                        }
-                    )
-                }
+            FloatingActionButton(onClick={showAdd=true}){
+                Icon(Icons.Outlined.Add,contentDescription="Proje ekle")
             }
         }
     ){padding->
@@ -230,226 +187,18 @@ fun HomeScreen(repository:SahaRepository,onProject:(String)->Unit){
         }
     }
 
-    if(showAddProject){
+    if(showAdd){
         AddProjectDialog(
-            onDismiss={showAddProject=false},
+            onDismiss={showAdd=false},
             onCreate={name->
                 scope.launch{
-                    runCatching{repository.createProject(name)}
-                        .onSuccess{project->
-                            showAddProject=false
-                            onProject(project.id)
-                        }
-                        .onFailure{
-                            snackbar.showSnackbar(it.message ?: "Proje oluşturulamadı.")
-                        }
+                    val project=repository.createProject(name)
+                    showAdd=false
+                    onProject(project.id)
                 }
             }
         )
     }
-
-    showFindingDefinitionKind?.let{kind->
-        HomeFindingDefinitionDialog(
-            projects=projects,
-            kind=kind,
-            onDismiss={showFindingDefinitionKind=null},
-            onCreate={projectId,code,title,tooltip->
-                scope.launch{
-                    runCatching{
-                        repository.createProblemDefinition(
-                            projectId=projectId,
-                            code=code,
-                            title=title,
-                            tooltip=tooltip,
-                            kind=kind
-                        )
-                    }.onSuccess{
-                        showFindingDefinitionKind=null
-                    }.onFailure{
-                        snackbar.showSnackbar(it.message ?: "Tanım oluşturulamadı.")
-                    }
-                }
-            }
-        )
-    }
-
-    if(showDeficiencyDefinition){
-        HomeDeficiencyDefinitionDialog(
-            projects=projects,
-            onDismiss={showDeficiencyDefinition=false},
-            onCreate={projectId,title,description->
-                scope.launch{
-                    runCatching{
-                        repository.createDeficiencyDefinition(
-                            projectId=projectId,
-                            title=title,
-                            description=description
-                        )
-                    }.onSuccess{
-                        showDeficiencyDefinition=false
-                    }.onFailure{
-                        snackbar.showSnackbar(it.message ?: "Eksik tanımı oluşturulamadı.")
-                    }
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun ProjectPicker(
-    projects:List<ProjectEntity>,
-    selectedProjectId:String?,
-    onSelected:(String)->Unit
-){
-    var expanded by remember{mutableStateOf(false)}
-    val selected=projects.firstOrNull{it.id==selectedProjectId}
-
-    Box(Modifier.fillMaxWidth()){
-        OutlinedButton(
-            onClick={expanded=true},
-            modifier=Modifier.fillMaxWidth()
-        ){
-            Text(selected?.name ?: "Proje seç",Modifier.weight(1f))
-            Text("▼")
-        }
-        DropdownMenu(
-            expanded=expanded,
-            onDismissRequest={expanded=false},
-            modifier=Modifier.fillMaxWidth()
-        ){
-            projects.forEach{project->
-                DropdownMenuItem(
-                    text={Text(project.name)},
-                    onClick={
-                        onSelected(project.id)
-                        expanded=false
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeFindingDefinitionDialog(
-    projects:List<ProjectEntity>,
-    kind:FindingKind,
-    onDismiss:()->Unit,
-    onCreate:(String,String,String,String?)->Unit
-){
-    val label=if(kind==FindingKind.ADVANTAGE)"Avantaj" else "Problem"
-    var projectId by remember(kind,projects){mutableStateOf(projects.firstOrNull()?.id)}
-    var code by remember(kind){mutableStateOf("")}
-    var title by remember(kind){mutableStateOf("")}
-    var tooltip by remember(kind){mutableStateOf("")}
-
-    AlertDialog(
-        onDismissRequest=onDismiss,
-        title={Text(label+" tanımı ekle")},
-        text={
-            Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-                Text(
-                    "Tanım seçtiğin projenin kataloğuna eklenir; otomatik saha kaydı açmaz.",
-                    style=MaterialTheme.typography.bodySmall
-                )
-                ProjectPicker(
-                    projects=projects,
-                    selectedProjectId=projectId,
-                    onSelected={projectId=it}
-                )
-                OutlinedTextField(
-                    value=code,
-                    onValueChange={code=it},
-                    label={Text("Kod")},
-                    modifier=Modifier.fillMaxWidth(),
-                    singleLine=true
-                )
-                OutlinedTextField(
-                    value=title,
-                    onValueChange={title=it},
-                    label={Text("Tanım")},
-                    modifier=Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value=tooltip,
-                    onValueChange={tooltip=it},
-                    label={Text("Tooltip / açıklama (opsiyonel)")},
-                    modifier=Modifier.fillMaxWidth(),
-                    minLines=2
-                )
-            }
-        },
-        confirmButton={
-            TextButton(
-                onClick={
-                    onCreate(
-                        requireNotNull(projectId),
-                        code,
-                        title,
-                        tooltip.trim().ifBlank{null}
-                    )
-                },
-                enabled=projectId!=null && code.isNotBlank() && title.isNotBlank()
-            ){Text("Tanımı kaydet")}
-        },
-        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
-    )
-}
-
-@Composable
-private fun HomeDeficiencyDefinitionDialog(
-    projects:List<ProjectEntity>,
-    onDismiss:()->Unit,
-    onCreate:(String,String,String?)->Unit
-){
-    var projectId by remember(projects){mutableStateOf(projects.firstOrNull()?.id)}
-    var title by remember{mutableStateOf("")}
-    var description by remember{mutableStateOf("")}
-
-    AlertDialog(
-        onDismissRequest=onDismiss,
-        title={Text("Eksik tanımı ekle")},
-        text={
-            Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
-                Text(
-                    "Tanım seçtiğin projenin kataloğuna eklenir ve imalat eksiği açarken tekrar kullanılabilir.",
-                    style=MaterialTheme.typography.bodySmall
-                )
-                ProjectPicker(
-                    projects=projects,
-                    selectedProjectId=projectId,
-                    onSelected={projectId=it}
-                )
-                OutlinedTextField(
-                    value=title,
-                    onValueChange={title=it},
-                    label={Text("Eksik / yapılacak iş tanımı")},
-                    modifier=Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value=description,
-                    onValueChange={description=it},
-                    label={Text("Varsayılan açıklama (opsiyonel)")},
-                    modifier=Modifier.fillMaxWidth(),
-                    minLines=2
-                )
-            }
-        },
-        confirmButton={
-            TextButton(
-                onClick={
-                    onCreate(
-                        requireNotNull(projectId),
-                        title,
-                        description.trim().ifBlank{null}
-                    )
-                },
-                enabled=projectId!=null && title.isNotBlank()
-            ){Text("Tanımı kaydet")}
-        },
-        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
-    )
 }
 
 @Composable
