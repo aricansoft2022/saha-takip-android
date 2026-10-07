@@ -152,9 +152,6 @@ object ReportExporter {
                         if(deficiencyLocation.isNotBlank()){
                             writer.paragraph(deficiencyLocation,indent=18f)
                         }
-                        deficiency.responsible?.let{
-                            writer.paragraph("Sorumlu — "+it,indent=18f)
-                        }
                         deficiency.targetDate?.let{
                             writer.paragraph("Hedef tarih — "+it,indent=18f)
                         }
