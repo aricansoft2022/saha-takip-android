@@ -121,6 +121,12 @@ fun ProjectScreen(
     val selectedWorkItem=remember(workItemOptions,selectedWorkItemKey){
         selectedWorkItemKey?.let{key->workItemOptions.firstOrNull{it.key==key}}
     }
+    val blockOpenProblemCounts=remember(matrixRows){
+        matrixRows
+            .groupBy{it.blockCode}
+            .mapValues{(_,rows)->rows.sumOf{it.openProblemCount}}
+    }
+
 
     LaunchedEffect(matrixLoaded,workItemOptions,selectedWorkItemKey){
         if(matrixLoaded && selectedWorkItemKey!=null && workItemOptions.none{it.key==selectedWorkItemKey}){
@@ -563,7 +569,26 @@ fun ProjectScreen(
                                 verticalAlignment=Alignment.CenterVertically
                             ){
                                 Column(Modifier.weight(1f)){
-                                    Text(block.code,style=MaterialTheme.typography.titleMedium)
+                                    Row(
+                                        verticalAlignment=Alignment.CenterVertically,
+                                        horizontalArrangement=Arrangement.spacedBy(8.dp)
+                                    ){
+                                        Text(block.code,style=MaterialTheme.typography.titleMedium)
+                                        val openProblemCount=blockOpenProblemCounts[block.code] ?: 0
+                                        if(openProblemCount>0){
+                                            Surface(
+                                                color=MaterialTheme.colorScheme.errorContainer,
+                                                contentColor=MaterialTheme.colorScheme.onErrorContainer,
+                                                shape=MaterialTheme.shapes.small
+                                            ){
+                                                Text(
+                                                    if(openProblemCount==1)"Problem" else "Problem "+openProblemCount,
+                                                    modifier=Modifier.padding(horizontal=8.dp,vertical=3.dp),
+                                                    style=MaterialTheme.typography.labelMedium
+                                                )
+                                            }
+                                        }
+                                    }
                                     selectedRow?.let{row->
                                         val detail=buildList{
                                             add(row.progressStatus.label)
