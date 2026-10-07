@@ -30,6 +30,7 @@ import com.aricansoft.sahatakip.SahaTakipApplication
 import com.aricansoft.sahatakip.backup.GkteShare
 import com.aricansoft.sahatakip.backup.SitePackManager
 import com.aricansoft.sahatakip.data.SahaRepository
+import com.aricansoft.sahatakip.data.normalizeWorkItemName
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
 import com.aricansoft.sahatakip.data.db.ProjectQuickStatusRow
 import com.aricansoft.sahatakip.data.db.ReportWorkItemRow
@@ -545,10 +546,10 @@ fun ProjectScreen(
                                 modifier=Modifier.padding(horizontal=8.dp).fillMaxWidth(),
                                 singleLine=true
                             )
-                            val normalizedSearch=normalizedWorkItemName(workItemSearch)
+                            val normalizedSearch=normalizeWorkItemName(workItemSearch)
                             val visibleOptions=workItemOptions.filter{option->
                                 normalizedSearch.isBlank() ||
-                                    normalizedWorkItemName(option.label).contains(normalizedSearch)
+                                    normalizeWorkItemName(option.label).contains(normalizedSearch)
                             }
                             visibleOptions.forEach{option->
                                 DropdownMenuItem(
