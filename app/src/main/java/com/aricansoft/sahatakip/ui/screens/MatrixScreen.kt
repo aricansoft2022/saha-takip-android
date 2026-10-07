@@ -75,9 +75,12 @@ fun MatrixScreen(
         if(selectedBlockTypeId==null) blocks else blocks.filter{it.blockTypeId==selectedBlockTypeId}
     }
     val visibleBlockCodes=remember(visibleBlocks){visibleBlocks.map{it.code}.toSet()}
-    val visibleRows=remember(rows,visibleBlockCodes,selectedFilter){
-        rows.filter{row->
-            row.blockCode in visibleBlockCodes && when(selectedFilter){
+    val scopedRows=remember(rows,visibleBlockCodes){
+        rows.filter{it.blockCode in visibleBlockCodes}
+    }
+    val matchingRows=remember(scopedRows,selectedFilter){
+        scopedRows.filter{row->
+            when(selectedFilter){
                 MatrixFilter.ALL -> true
                 MatrixFilter.OPEN_PROBLEM -> row.openProblemCount>0
                 MatrixFilter.OPEN_DEFICIENCY -> row.openDeficiencyCount>0
@@ -92,8 +95,8 @@ fun MatrixScreen(
             }
         }
     }
-    val workRows=remember(visibleRows){
-        visibleRows
+    val workRows=remember(matchingRows){
+        matchingRows
             .groupBy{it.workItemDefinitionId}
             .map{entry->
                 val first=entry.value.first()
@@ -104,8 +107,8 @@ fun MatrixScreen(
                     .thenBy{it.name}
             )
     }
-    val cellMap=remember(visibleRows){
-        visibleRows.associateBy{it.workItemDefinitionId to it.blockCode}
+    val cellMap=remember(scopedRows){
+        scopedRows.associateBy{it.workItemDefinitionId to it.blockCode}
     }
     val horizontal=rememberScrollState()
     val vertical=rememberScrollState()
@@ -172,7 +175,7 @@ fun MatrixScreen(
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem   E Açık eksik   A Açık avantaj",
+                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   — Bu blokta yok   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem   E Açık eksik   A Açık avantaj",
                             style=MaterialTheme.typography.bodySmall
                         )
                         Text(
@@ -280,7 +283,7 @@ private fun WorkNameCell(work:MatrixWorkRow){
 @Composable
 private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
     val background=when{
-        row==null -> MaterialTheme.colorScheme.surface
+        row==null -> MaterialTheme.colorScheme.surfaceVariant
         row.openProblemCount>0 -> MaterialTheme.colorScheme.errorContainer
         row.openDeficiencyCount>0 -> MaterialTheme.colorScheme.tertiaryContainer
         row.openAdvantageCount>0 -> matrixAdvantageContainer
@@ -295,7 +298,7 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
         ProgressStatus.FINISHED -> "✓"
         ProgressStatus.IN_PROGRESS -> "◐"
         ProgressStatus.NOT_STARTED -> "○"
-        null -> ""
+        null -> "—"
     }
     val qualifier=if(row==null){
         ""
