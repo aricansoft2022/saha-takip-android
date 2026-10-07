@@ -90,6 +90,7 @@ fun WorkItemDetailScreen(
     var showProblem by remember{mutableStateOf(false)}
     var showAdvantage by remember{mutableStateOf(false)}
     var showDeficiency by remember{mutableStateOf(false)}
+    var editingDeficiency by remember{mutableStateOf<DeficiencyEntity?>(null)}
     var pendingPhoto by remember{mutableStateOf<PendingPhoto?>(null)}
     var pendingFindingRecordId by remember{mutableStateOf<String?>(null)}
     var pendingDeficiencyId by remember{mutableStateOf<String?>(null)}
@@ -270,7 +271,14 @@ fun WorkItemDetailScreen(
                 onStatus={id,status->
                     scope.launch{repository.setDeficiencyStatus(id,status)}
                 },
-                onAdd={showDeficiency=true}
+                onEdit={record->
+                    editingDeficiency=record
+                    showDeficiency=true
+                },
+                onAdd={
+                    editingDeficiency=null
+                    showDeficiency=true
+                }
             )
 
             HorizontalDivider()
@@ -342,23 +350,44 @@ fun WorkItemDetailScreen(
 
     if(showDeficiency){
         DeficiencyDialog(
-            onDismiss={showDeficiency=false},
-            onCreate={title,description,floor,unitNumber,unitName,responsible,targetDate,priority,include->
+            initial=editingDeficiency,
+            onDismiss={
+                showDeficiency=false
+                editingDeficiency=null
+            },
+            onSave={title,description,floor,unitNumber,unitName,responsible,targetDate,priority,include->
+                val editing=editingDeficiency
                 scope.launch{
-                    repository.createDeficiency(
-                        blockWorkItemId=blockWorkItemId,
-                        title=title,
-                        description=description,
-                        floor=floor,
-                        unitNumber=unitNumber,
-                        unitName=unitName,
-                        responsible=responsible,
-                        targetDate=targetDate,
-                        priority=priority,
-                        includeInReport=include
-                    )
+                    if(editing==null){
+                        repository.createDeficiency(
+                            blockWorkItemId=blockWorkItemId,
+                            title=title,
+                            description=description,
+                            floor=floor,
+                            unitNumber=unitNumber,
+                            unitName=unitName,
+                            responsible=responsible,
+                            targetDate=targetDate,
+                            priority=priority,
+                            includeInReport=include
+                        )
+                    }else{
+                        repository.updateDeficiency(
+                            id=editing.id,
+                            title=title,
+                            description=description,
+                            floor=floor,
+                            unitNumber=unitNumber,
+                            unitName=unitName,
+                            responsible=responsible,
+                            targetDate=targetDate,
+                            priority=priority,
+                            includeInReport=include
+                        )
+                    }
                 }
                 showDeficiency=false
+                editingDeficiency=null
             }
         )
     }
@@ -615,6 +644,7 @@ private fun DeficiencySection(
     onTogglePhotoReport:(String,Boolean)->Unit,
     onToggleReport:(String,Boolean)->Unit,
     onStatus:(String,DeficiencyStatus)->Unit,
+    onEdit:(DeficiencyEntity)->Unit,
     onAdd:()->Unit
 ){
     HorizontalDivider()
@@ -692,6 +722,8 @@ private fun DeficiencySection(
                         onCheckedChange={checked->onToggleReport(record.id,checked)}
                     )
                     Text("Rapora dahil")
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick={onEdit(record)}){Text("Düzenle")}
                 }
 
                 HorizontalDivider(Modifier.padding(vertical=4.dp))
@@ -766,23 +798,24 @@ private fun DeficiencyEvidencePhotos(
 
 @Composable
 private fun DeficiencyDialog(
+    initial:DeficiencyEntity?=null,
     onDismiss:()->Unit,
-    onCreate:(String,String?,String?,String?,String?,String?,String?,DeficiencyPriority,Boolean)->Unit
+    onSave:(String,String?,String?,String?,String?,String?,String?,DeficiencyPriority,Boolean)->Unit
 ){
-    var title by remember{mutableStateOf("")}
-    var description by remember{mutableStateOf("")}
-    var floor by remember{mutableStateOf("")}
-    var unitNumber by remember{mutableStateOf("")}
-    var unitName by remember{mutableStateOf("")}
-    var responsible by remember{mutableStateOf("")}
-    var targetDate by remember{mutableStateOf("")}
-    var priority by remember{mutableStateOf(DeficiencyPriority.NORMAL)}
-    var include by remember{mutableStateOf(true)}
+    var title by remember(initial?.id){mutableStateOf(initial?.title.orEmpty())}
+    var description by remember(initial?.id){mutableStateOf(initial?.description.orEmpty())}
+    var floor by remember(initial?.id){mutableStateOf(initial?.floor.orEmpty())}
+    var unitNumber by remember(initial?.id){mutableStateOf(initial?.unitNumber.orEmpty())}
+    var unitName by remember(initial?.id){mutableStateOf(initial?.unitName.orEmpty())}
+    var responsible by remember(initial?.id){mutableStateOf(initial?.responsible.orEmpty())}
+    var targetDate by remember(initial?.id){mutableStateOf(initial?.targetDate.orEmpty())}
+    var priority by remember(initial?.id){mutableStateOf(initial?.priority ?: DeficiencyPriority.NORMAL)}
+    var include by remember(initial?.id){mutableStateOf(initial?.includeInReport ?: true)}
     val targetValid=targetDate.isBlank() || Regex("""\d{4}-\d{2}-\d{2}""").matches(targetDate.trim())
 
     AlertDialog(
         onDismissRequest=onDismiss,
-        title={Text("İmalat eksiği ekle")},
+        title={Text(if(initial==null)"İmalat eksiği ekle" else "İmalat eksiğini düzenle")},
         text={
             Column(
                 Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState()),
@@ -860,7 +893,7 @@ private fun DeficiencyDialog(
         confirmButton={
             TextButton(
                 onClick={
-                    onCreate(
+                    onSave(
                         title,
                         description.trim().ifBlank{null},
                         floor.trim().ifBlank{null},
@@ -873,7 +906,7 @@ private fun DeficiencyDialog(
                     )
                 },
                 enabled=title.isNotBlank() && targetValid
-            ){Text("Eksik aç")}
+            ){Text(if(initial==null)"Eksik aç" else "Kaydet")}
         },
         dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
     )
