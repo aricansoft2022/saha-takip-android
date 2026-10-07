@@ -110,10 +110,9 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Bir imalat detayından yeni eksik açılabilir.
 - [ ] Eksik başlığı zorunludur; açıklama opsiyoneldir.
 - [ ] Kat, mahal/daire/birim no ve adı girilebilir.
-- [ ] Sorumlu kişi/ekip girilebilir.
 - [ ] Hedef tarih `YYYY-AA-GG` biçiminde girilebilir.
 - [ ] Takvimde var olmayan tarih (`2026-02-30`, `2026-99-99`) kaydedilemez.
-- [ ] Açılmış eksikte açıklama, konum, sorumlu, hedef tarih ve öncelik sonradan düzenlenebilir.
+- [ ] Açılmış eksikte açıklama, konum, hedef tarih ve öncelik sonradan düzenlenebilir.
 - [ ] Eksik düzenlemek durum yaşam döngüsünü sıfırlamaz.
 - [ ] Öncelik Normal / Yüksek / Kritik seçilebilir.
 - [ ] Yeni eksik varsayılan olarak Açık durumundadır.
@@ -127,7 +126,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Proje ekranındaki Eksik Takibi açılır ve tüm blok/imalat eksiklerini listeler.
 - [ ] Proje eksik ekranında Aktif / Açık / Gideriliyor / Giderildi / Kontrol edildi filtreleri çalışır.
 - [ ] Öncelik filtresi Tümü / Normal / Yüksek / Kritik olarak durum filtresiyle birlikte çalışır.
-- [ ] Blok, imalat, mahal veya sorumlu metniyle arama çalışır.
+- [ ] Blok, imalat veya mahal metniyle arama çalışır.
 - [ ] Bir eksik kartına dokununca doğru imalat detayına gider.
 - [ ] Anasayfada Açık eksik filtresi doğru projeleri getirir.
 - [ ] Seçili imalat + Açık eksik filtresi aynı imalat üzerinde kesişimli çalışır.
@@ -136,7 +135,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Matris Açık eksik filtresi doğru kayıtları gösterir.
 - [ ] PDF eksikleri ilgili imalat altında ve eksik fotoğraflarıyla gösterir.
 - [ ] XLSX içinde ayrı `Eksikler` sayfası vardır.
-- [ ] GKTE export/import sonrası eksik durumu, sorumlu, hedef tarih, konum ve fotoğraf bağları korunur.
+- [ ] GKTE export/import sonrası eksik durumu, hedef tarih, konum ve fotoğraf bağları korunur.
 - [ ] v4 → v5 migration mevcut saha verilerini kaybetmez.
 
 ## 10. Notlar
@@ -228,7 +227,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Aynı GKTE dosyası ekran döndürme / Activity yeniden yaratılması nedeniyle ikinci kez otomatik içe alınmaz.
 - [ ] Bloklar ve imalat durumları eşleşir.
 - [ ] Problem/avantaj/eksik/not kayıtları eşleşir.
-- [ ] Eksik durum, sorumlu, hedef tarih, öncelik ve fotoğraf ilişkileri eşleşir.
+- [ ] Eksik durum, hedef tarih, öncelik ve fotoğraf ilişkileri eşleşir.
 - [ ] Fotoğraflar yeni projede açılır.
 - [ ] İçe aktarılmış projeden tekrar PDF/XLSX alınabilir.
 - [ ] İçe aktarılmış projeden yeniden `.gkte` alınabilir.
