@@ -282,7 +282,18 @@ fun WorkItemDetailScreen(
             )
 
             HorizontalDivider()
-            Text("Notlar",style=MaterialTheme.typography.titleMedium)
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.SpaceBetween
+            ){
+                Text("Notlar",style=MaterialTheme.typography.titleMedium)
+                Text(
+                    notes.size.toString()+" kayıt",
+                    style=MaterialTheme.typography.labelMedium,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             notes.forEach{note->
                 OutlinedCard(Modifier.fillMaxWidth()){
                     Column(Modifier.padding(12.dp)){
@@ -304,7 +315,18 @@ fun WorkItemDetailScreen(
             Button(onClick={showNote=true}){Text("Not ekle")}
 
             HorizontalDivider()
-            Text("Fotoğraflar",style=MaterialTheme.typography.titleMedium)
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment=Alignment.CenterVertically,
+                horizontalArrangement=Arrangement.SpaceBetween
+            ){
+                Text("Fotoğraflar",style=MaterialTheme.typography.titleMedium)
+                Text(
+                    photos.size.toString()+" fotoğraf",
+                    style=MaterialTheme.typography.labelMedium,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Row(verticalAlignment=Alignment.CenterVertically){
                 Checkbox(checked=photoInReport,onCheckedChange={photoInReport=it})
                 Text("Yeni fotoğraf rapora dahil")
@@ -497,7 +519,19 @@ private fun FindingSection(
 ){
     HorizontalDivider()
     val isAdvantage=kind==FindingKind.ADVANTAGE
-    Text(if(isAdvantage)"Avantajlar" else "Problemler",style=MaterialTheme.typography.titleMedium)
+    val activeCount=records.count{it.status==ProblemRecordStatus.OPEN}
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment=Alignment.CenterVertically,
+        horizontalArrangement=Arrangement.SpaceBetween
+    ){
+        Text(if(isAdvantage)"Avantajlar" else "Problemler",style=MaterialTheme.typography.titleMedium)
+        Text(
+            activeCount.toString()+" aktif",
+            style=MaterialTheme.typography.labelMedium,
+            color=if(isAdvantage)advantageContent else MaterialTheme.colorScheme.error
+        )
+    }
 
     records.forEach{record->
         OutlinedCard(
