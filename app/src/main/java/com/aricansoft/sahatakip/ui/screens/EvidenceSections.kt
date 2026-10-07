@@ -259,9 +259,6 @@ internal fun DeficiencySection(
                 if(location.isNotEmpty()){
                     Text(location.joinToString(" · "),style=MaterialTheme.typography.bodySmall)
                 }
-                record.responsible?.let{
-                    Text("Sorumlu: "+it,style=MaterialTheme.typography.bodySmall)
-                }
                 record.targetDate?.let{
                     Text("Hedef: "+it,style=MaterialTheme.typography.bodySmall)
                 }
