@@ -16,6 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BlockWorkItemEntity::class,
         ProblemDefinitionEntity::class,
         ProblemRecordEntity::class,
+        DeficiencyDefinitionEntity::class,
         DeficiencyEntity::class,
         NoteEntity::class,
         PhotoEntity::class,
@@ -23,7 +24,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BlockAttributeValueEntity::class,
         AuditEventEntity::class
     ],
-    version=6,
+    version=7,
     exportSchema=true
 )
 @TypeConverters(Converters::class)
@@ -368,6 +369,23 @@ abstract class SahaDatabase:RoomDatabase(){
                 )
                 indexStatements.forEach(db::execSQL)
                 installIntegrityTriggers(db)
+            }
+        }
+
+        val MIGRATION_6_7=object:Migration(6,7){
+            override fun migrate(db:SupportSQLiteDatabase){
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS deficiency_definitions (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        projectId TEXT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT,
+                        active INTEGER NOT NULL,
+                        FOREIGN KEY(projectId) REFERENCES projects(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_deficiency_definitions_projectId ON deficiency_definitions(projectId)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_deficiency_definitions_projectId_title ON deficiency_definitions(projectId,title)")
             }
         }
 
