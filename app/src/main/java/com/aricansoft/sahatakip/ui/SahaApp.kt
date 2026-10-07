@@ -63,6 +63,7 @@ fun SahaApp(
                 projectId=projectId,
                 onBack={nav.popBackStack()},
                 onBlock={blockId->nav.navigate("block/"+projectId+"/"+blockId)},
+                onWorkItem={id->nav.navigate("work/"+id)},
                 onMatrix={nav.navigate("matrix/"+projectId)},
                 onDeficiencies={nav.navigate("deficiencies/"+projectId)}
             )
