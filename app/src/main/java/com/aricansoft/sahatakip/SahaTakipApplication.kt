@@ -17,7 +17,8 @@ class SahaTakipApplication:Application(){
             .addMigrations(
                 SahaDatabase.MIGRATION_1_2,
                 SahaDatabase.MIGRATION_2_3,
-                SahaDatabase.MIGRATION_3_4
+                SahaDatabase.MIGRATION_3_4,
+                SahaDatabase.MIGRATION_4_5
             )
             .build()
     }
