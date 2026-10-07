@@ -30,7 +30,6 @@ Alanlar:
 - kat
 - mahal/daire/birim no
 - mahal/daire/birim adı
-- sorumlu kişi/ekip
 - hedef tarih
 - öncelik: NORMAL / HIGH / CRITICAL
 - rapora dahil bayrağı
