@@ -52,13 +52,15 @@ fun DeficiencyScreen(
     val records by remember(projectId){repository.observeProjectDeficiencies(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     var filter by rememberSaveable(projectId){mutableStateOf(DeficiencyListFilter.ACTIVE)}
+    var priorityFilter by rememberSaveable(projectId){mutableStateOf<DeficiencyPriority?>(null)}
     var search by rememberSaveable(projectId){mutableStateOf("")}
     val tr=remember{Locale.forLanguageTag("tr-TR")}
     val normalized=search.trim().lowercase(tr)
 
-    val visible=remember(records,filter,normalized){
+    val visible=remember(records,filter,priorityFilter,normalized){
         records.filter{row->
-            row.matches(filter) && (
+            row.matches(filter) &&
+            (priorityFilter==null || row.priority==priorityFilter) && (
                 normalized.isBlank() ||
                     listOfNotNull(
                         row.blockCode,
@@ -116,6 +118,24 @@ fun DeficiencyScreen(
                                 selected=filter==item,
                                 onClick={filter=item},
                                 label={Text(item.label+" ("+count+")")}
+                            )
+                        }
+                    }
+                    Text("Öncelik",style=MaterialTheme.typography.labelLarge)
+                    LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        item{
+                            FilterChip(
+                                selected=priorityFilter==null,
+                                onClick={priorityFilter=null},
+                                label={Text("Tümü ("+records.count{it.matches(filter)}+")")}
+                            )
+                        }
+                        items(DeficiencyPriority.entries,key={it.name}){priority->
+                            val count=records.count{it.matches(filter) && it.priority==priority}
+                            FilterChip(
+                                selected=priorityFilter==priority,
+                                onClick={priorityFilter=priority},
+                                label={Text(priority.label+" ("+count+")")}
                             )
                         }
                     }
