@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.isValidTargetDate
+import com.aricansoft.sahatakip.data.db.DeficiencyDefinitionEntity
 import com.aricansoft.sahatakip.data.db.DeficiencyEntity
 import com.aricansoft.sahatakip.data.db.ProblemDefinitionEntity
 import com.aricansoft.sahatakip.data.db.ProblemRecordRow
@@ -68,6 +69,10 @@ fun WorkItemDetailScreen(
         projectId?.let{repository.observeProblemDefinitions(it)} ?: kotlinx.coroutines.flow.flowOf(emptyList())
     }
     val findingDefs by findingDefinitionsFlow.collectAsStateWithLifecycle(initialValue=emptyList())
+    val deficiencyDefinitionsFlow=remember(projectId){
+        projectId?.let{repository.observeDeficiencyDefinitions(it)} ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    }
+    val deficiencyDefs by deficiencyDefinitionsFlow.collectAsStateWithLifecycle(initialValue=emptyList())
     val findings by remember(blockWorkItemId){repository.observeProblemRecords(blockWorkItemId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val problems=remember(findings){findings.filter{it.kind==FindingKind.PROBLEM}}
@@ -374,6 +379,7 @@ fun WorkItemDetailScreen(
     if(showDeficiency){
         DeficiencyDialog(
             initial=editingDeficiency,
+            definitions=deficiencyDefs,
             onDismiss={
                 showDeficiency=false
                 editingDeficiency=null
@@ -509,6 +515,7 @@ fun WorkItemDetailScreen(
 @Composable
 private fun DeficiencyDialog(
     initial:DeficiencyEntity?=null,
+    definitions:List<DeficiencyDefinitionEntity>,
     onDismiss:()->Unit,
     onSave:(String,String?,String?,String?,String?,String?,String?,DeficiencyPriority,Boolean)->Unit
 ){
@@ -521,6 +528,7 @@ private fun DeficiencyDialog(
     var targetDate by remember(initial?.id){mutableStateOf(initial?.targetDate.orEmpty())}
     var priority by remember(initial?.id){mutableStateOf(initial?.priority ?: DeficiencyPriority.NORMAL)}
     var include by remember(initial?.id){mutableStateOf(initial?.includeInReport ?: true)}
+    var catalogExpanded by remember(initial?.id){mutableStateOf(false)}
     val targetValid=isValidTargetDate(targetDate)
 
     AlertDialog(
@@ -531,6 +539,42 @@ private fun DeficiencyDialog(
                 Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement=Arrangement.spacedBy(8.dp)
             ){
+                if(initial==null && definitions.isNotEmpty()){
+                    Text("Tanımlı eksikler",style=MaterialTheme.typography.labelLarge)
+                    Box(Modifier.fillMaxWidth()){
+                        OutlinedButton(
+                            onClick={catalogExpanded=true},
+                            modifier=Modifier.fillMaxWidth()
+                        ){
+                            Text("Katalogdan seç",Modifier.weight(1f))
+                            Text("▼")
+                        }
+                        DropdownMenu(
+                            expanded=catalogExpanded,
+                            onDismissRequest={catalogExpanded=false},
+                            modifier=Modifier.fillMaxWidth()
+                        ){
+                            definitions.forEach{definition->
+                                DropdownMenuItem(
+                                    text={
+                                        Column{
+                                            Text(definition.title)
+                                            definition.description?.takeIf{it.isNotBlank()}?.let{
+                                                Text(it,style=MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
+                                    },
+                                    onClick={
+                                        title=definition.title
+                                        description=definition.description.orEmpty()
+                                        catalogExpanded=false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    HorizontalDivider()
+                }
                 OutlinedTextField(
                     value=title,
                     onValueChange={title=it},
