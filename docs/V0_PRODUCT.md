@@ -84,6 +84,8 @@ Her eksik şu alanları taşıyabilir:
 - Sorumlu kişi / ekip
 - Hedef tarih
 - Öncelik: Normal / Yüksek / Kritik
+
+Başlık, açıklama, konum, sorumlu, hedef tarih ve öncelik sonradan düzenlenebilir; düzenleme mevcut durum yaşam döngüsünü sıfırlamaz.
 - Rapora dahil bayrağı
 - Sınırsız kanıt fotoğrafı
 
@@ -94,7 +96,7 @@ Yaşam döngüsü:
 
 Eksikler iki yüzeyden yönetilir:
 1. İmalat detayında o imalata ait eksikler.
-2. Proje seviyesindeki **İmalat Eksik Takibi** ekranında tüm blok/imalat eksikleri; durum ve metin aramasıyla.
+2. Proje seviyesindeki **İmalat Eksik Takibi** ekranında tüm blok/imalat eksikleri; durum, öncelik ve metin aramasıyla.
 
 Anasayfada `Açık eksik` hızlı filtresi vardır. Matris hücresinde aktif eksik `E` / `E<n>` ile gösterilir.
 
