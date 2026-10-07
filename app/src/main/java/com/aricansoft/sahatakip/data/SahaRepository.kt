@@ -16,6 +16,7 @@ class SahaRepository(private val dao:SahaDao){
     fun observeBlockWorkItem(id:String)=dao.observeBlockWorkItem(id)
     fun observeWorkItemDefinitions(projectId:String)=dao.observeWorkItemDefinitions(projectId)
     fun observeProblemDefinitions(projectId:String)=dao.observeProblemDefinitions(projectId)
+    fun observeDeficiencyDefinitions(projectId:String)=dao.observeDeficiencyDefinitions(projectId)
     fun observeProblemRecords(blockWorkItemId:String)=dao.observeProblemRecords(blockWorkItemId)
     fun observeProjectFindings(projectId:String)=dao.observeProjectFindings(projectId)
     fun observeDeficiencies(blockWorkItemId:String)=dao.observeDeficiencies(blockWorkItemId)
@@ -226,6 +227,52 @@ class SahaRepository(private val dao:SahaDao){
         val now=System.currentTimeMillis()
         dao.insertNote(NoteEntity(UUID.randomUUID().toString(),blockWorkItemId,text.trim(),includeInReport,now))
         audit(blockWorkItemId,AuditEventType.NOTE_ADDED,"Not eklendi",now)
+    }
+
+    suspend fun createProblemDefinition(
+        projectId:String,
+        code:String,
+        title:String,
+        tooltip:String?=null,
+        kind:FindingKind=FindingKind.PROBLEM
+    ):ProblemDefinitionEntity{
+        val normalized=code.trim().uppercase(Locale.forLanguageTag("tr-TR"))
+        require(normalized.isNotBlank()){"Kod boş olamaz."}
+        val cleanTitle=title.trim()
+        require(cleanTitle.isNotBlank()){"Tanım boş olamaz."}
+        dao.getProblemDefinitionByCode(projectId,normalized)?.let{existing->
+            if(existing.kind==kind){
+                error(normalized+" kodu zaten tanımlı.")
+            }
+            error(normalized+" kodu zaten "+existing.kind.label.lowercase(Locale.forLanguageTag("tr-TR"))+" olarak kullanılıyor.")
+        }
+        return ProblemDefinitionEntity(
+            id="pd-"+UUID.randomUUID(),
+            projectId=projectId,
+            code=normalized,
+            title=cleanTitle,
+            tooltip=tooltip?.trim()?.ifBlank{null},
+            kind=kind
+        ).also{dao.insertProblemDefinition(it)}
+    }
+
+    suspend fun createDeficiencyDefinition(
+        projectId:String,
+        title:String,
+        description:String?=null
+    ):DeficiencyDefinitionEntity{
+        val cleanTitle=title.trim()
+        require(cleanTitle.isNotBlank()){"Eksik tanımı boş olamaz."}
+        val normalized=normalizeWorkItemName(cleanTitle)
+        dao.getDeficiencyDefinitionsForProject(projectId)
+            .firstOrNull{normalizeWorkItemName(it.title)==normalized}
+            ?.let{error("Bu eksik tanımı zaten mevcut.")}
+        return DeficiencyDefinitionEntity(
+            id="dd-"+UUID.randomUUID(),
+            projectId=projectId,
+            title=cleanTitle,
+            description=description?.trim()?.ifBlank{null}
+        ).also{dao.insertDeficiencyDefinition(it)}
     }
 
     suspend fun attachProblem(
