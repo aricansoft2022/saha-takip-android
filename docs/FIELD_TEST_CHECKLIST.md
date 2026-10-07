@@ -35,7 +35,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Seçili imalatta blok kartına dokununca doğru `blockWorkItemId` detayına doğrudan gider.
 - [ ] `Tüm imalatlar` seçilince tüm bloklar geri gelir ve kartlar normal blok ekranına gider.
 
-## 5. Proje / blok tipi / blok
+## 4. Proje / blok tipi / blok
 
 
 
@@ -45,7 +45,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Aynı blok numarası ikinci kez oluşturulamaz.
 - [ ] Aynı blok tipi kodu aynı projede ikinci kez oluşturulamaz.
 
-## 4. İmalat kataloğu ve kapsam
+## 5. İmalat kataloğu ve kapsam
 
 - [ ] TEST-1 içinde yeni imalat tanımlanır.
 - [ ] “Yalnız bu blok” ile TEST-2'ye yayılmadığı doğrulanır.
