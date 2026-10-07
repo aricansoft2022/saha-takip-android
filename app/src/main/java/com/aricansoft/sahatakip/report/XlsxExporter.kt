@@ -27,6 +27,7 @@ object XlsxExporter {
 
         val itemById=snapshot.workItems.associateBy{it.blockWorkItemId}
         val findingById=snapshot.problems.associateBy{it.problemRecordId}
+        val deficiencyById=snapshot.deficiencies.associateBy{it.deficiencyId}
         val blockCodes=snapshot.workItems.map{it.blockCode}.distinct()
         val workRows=snapshot.workItems
             .groupBy{it.workItemName}
@@ -57,6 +58,29 @@ object XlsxExporter {
         val problemRows=findingRows(snapshot,FindingKind.PROBLEM,itemById)
         val advantageRows=findingRows(snapshot,FindingKind.ADVANTAGE,itemById)
 
+        val deficiencyRows=mutableListOf<List<String>>()
+        deficiencyRows.add(listOf(
+            "Blok","İmalat","Eksik","Açıklama","Kat","Mahal/Daire/Birim No",
+            "Mahal/Daire/Birim Adı","Sorumlu","Hedef Tarih","Öncelik","Durum","Açılış","Güncelleme"
+        ))
+        snapshot.deficiencies.forEach{deficiency->
+            deficiencyRows.add(listOf(
+                deficiency.blockCode,
+                deficiency.workItemName,
+                deficiency.title,
+                deficiency.description.orEmpty(),
+                deficiency.floor.orEmpty(),
+                deficiency.unitNumber.orEmpty(),
+                deficiency.unitName.orEmpty(),
+                deficiency.responsible.orEmpty(),
+                deficiency.targetDate.orEmpty(),
+                deficiency.priority.label,
+                deficiency.status.label,
+                formatDate(deficiency.createdAt),
+                formatDate(deficiency.updatedAt)
+            ))
+        }
+
         val noteRows=mutableListOf<List<String>>()
         noteRows.add(listOf("Blok","İmalat","Tarih","Not"))
         snapshot.notes.forEach{note->
@@ -74,7 +98,9 @@ object XlsxExporter {
         snapshot.photos.forEach{photo->
             val item=itemById[photo.blockWorkItemId]
             val finding=photo.problemRecordId?.let{findingById[it]}
+            val deficiency=photo.deficiencyId?.let{deficiencyById[it]}
             val linkedRecord=when{
+                deficiency!=null -> "Eksik — "+deficiency.title
                 finding==null -> "Genel imalat fotoğrafı"
                 finding.kind==FindingKind.ADVANTAGE -> "Avantaj "+finding.code+" — "+finding.title
                 else -> "Problem "+finding.code+" — "+finding.title
@@ -96,8 +122,9 @@ object XlsxExporter {
             putText(zip,"xl/worksheets/sheet1.xml",worksheet(matrixRows))
             putText(zip,"xl/worksheets/sheet2.xml",worksheet(problemRows))
             putText(zip,"xl/worksheets/sheet3.xml",worksheet(advantageRows))
-            putText(zip,"xl/worksheets/sheet4.xml",worksheet(noteRows))
-            putText(zip,"xl/worksheets/sheet5.xml",worksheet(photoRows))
+            putText(zip,"xl/worksheets/sheet4.xml",worksheet(deficiencyRows))
+            putText(zip,"xl/worksheets/sheet5.xml",worksheet(noteRows))
+            putText(zip,"xl/worksheets/sheet6.xml",worksheet(photoRows))
         }
 
         return FileProvider.getUriForFile(
@@ -145,6 +172,7 @@ object XlsxExporter {
         if(item.controlStatus.label!="Kontrol edilmedi") parts += item.controlStatus.label
         if(item.isBlocked) parts += "Bloke"
         if(item.openProblemCount>0) parts += "Açık problem: "+item.openProblemCount
+        if(item.openDeficiencyCount>0) parts += "Aktif eksik: "+item.openDeficiencyCount
         if(item.openAdvantageCount>0) parts += "Açık avantaj: "+item.openAdvantageCount
         return parts.joinToString(" · ")
     }
@@ -178,6 +206,7 @@ object XlsxExporter {
   <Override PartName="/xl/worksheets/sheet3.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet4.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
   <Override PartName="/xl/worksheets/sheet5.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/worksheets/sheet6.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
 </Types>"""
 
     private fun rootRels()="""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -192,8 +221,9 @@ object XlsxExporter {
     <sheet name="İmalat Matrisi" sheetId="1" r:id="rId1"/>
     <sheet name="Problemler" sheetId="2" r:id="rId2"/>
     <sheet name="Avantajlar" sheetId="3" r:id="rId3"/>
-    <sheet name="Notlar" sheetId="4" r:id="rId4"/>
-    <sheet name="Fotoğraflar" sheetId="5" r:id="rId5"/>
+    <sheet name="Eksikler" sheetId="4" r:id="rId4"/>
+    <sheet name="Notlar" sheetId="5" r:id="rId5"/>
+    <sheet name="Fotoğraflar" sheetId="6" r:id="rId6"/>
   </sheets>
 </workbook>"""
 
@@ -204,6 +234,7 @@ object XlsxExporter {
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/>
   <Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/>
   <Relationship Id="rId5" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet5.xml"/>
+  <Relationship Id="rId6" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet6.xml"/>
 </Relationships>"""
 
     private fun putText(zip:ZipOutputStream,path:String,text:String){
