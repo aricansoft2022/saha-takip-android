@@ -20,10 +20,11 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Örn. Daire Pano + Açık problem, yalnız Daire Pano'da açık problemi olan projeleri gösterir.
 - [ ] Proje kartındaki durum özeti seçili imalata göre yeniden hesaplanır.
 - [ ] “Tüm imalatlar” seçilince proje geneli durum davranışına dönülür.
-- [ ] Hızlı filtre çipleri: Tümü / Açık problem / Açık avantaj / Kusurlu / Bloke / Devam / Bitti görünür.
+- [ ] Hızlı filtre çipleri: Tümü / Açık problem / Açık eksik / Açık avantaj / Kusurlu / Bloke / Devam / Bitti görünür.
 - [ ] Her çipte eşleşen proje sayısı görünür.
 - [ ] Projedeki bir imalatın durumu değişince anasayfa sayımları otomatik güncellenir.
 - [ ] Açık problem filtresi yalnız açık problemi olan projeleri gösterir.
+- [ ] Açık eksik filtresi yalnız aktif eksiği olan projeleri gösterir.
 - [ ] Açık avantaj filtresi yalnız açık avantajı olan projeleri gösterir.
 - [ ] Kusurlu / Bloke / Devam / Bitti filtreleri doğru projeleri gösterir.
 - [ ] Seçili filtrede sonuç yoksa boş durum mesajı görünür.
@@ -89,14 +90,44 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Problem kapatılır, kapanma durumu korunur.
 - [ ] Rapora dahil kutusu sonradan değiştirilebilir.
 
-## 8. Notlar
+## 8. İmalat eksik takip yönetimi
+
+- [ ] Bir imalat detayından yeni eksik açılabilir.
+- [ ] Eksik başlığı zorunludur; açıklama opsiyoneldir.
+- [ ] Kat, mahal/daire/birim no ve adı girilebilir.
+- [ ] Sorumlu kişi/ekip girilebilir.
+- [ ] Hedef tarih `YYYY-AA-GG` biçiminde girilebilir.
+- [ ] Öncelik Normal / Yüksek / Kritik seçilebilir.
+- [ ] Yeni eksik varsayılan olarak Açık durumundadır.
+- [ ] Yaşam döngüsü Açık → Gideriliyor → Giderildi → Kontrol edildi çalışır.
+- [ ] Giderildi kaydı aktif eksik sayısından düşmez.
+- [ ] Yalnız Kontrol edildi kaydı aktif eksik sayısından düşer.
+- [ ] Durum gerektiğinde geriye alınabilir.
+- [ ] Her eksiğe art arda en az 5 fotoğraf eklenebilir.
+- [ ] Eksik fotoğrafları genel imalat veya problem/avantaj fotoğraflarına karışmaz.
+- [ ] Her eksik fotoğrafının Rapora dahil seçimi bağımsız çalışır.
+- [ ] Proje ekranındaki Eksik Takibi açılır ve tüm blok/imalat eksiklerini listeler.
+- [ ] Proje eksik ekranında Aktif / Açık / Gideriliyor / Giderildi / Kontrol edildi filtreleri çalışır.
+- [ ] Blok, imalat, mahal veya sorumlu metniyle arama çalışır.
+- [ ] Bir eksik kartına dokununca doğru imalat detayına gider.
+- [ ] Anasayfada Açık eksik filtresi doğru projeleri getirir.
+- [ ] Seçili imalat + Açık eksik filtresi aynı imalat üzerinde kesişimli çalışır.
+- [ ] Blok imalat kartında `E` / `E<n>` aktif eksik sayısı görünür.
+- [ ] Matris hücresinde `E` / `E<n>` aktif eksik işareti görünür.
+- [ ] Matris Açık eksik filtresi doğru kayıtları gösterir.
+- [ ] PDF eksikleri ilgili imalat altında ve eksik fotoğraflarıyla gösterir.
+- [ ] XLSX içinde ayrı `Eksikler` sayfası vardır.
+- [ ] GKTE export/import sonrası eksik durumu, sorumlu, hedef tarih, konum ve fotoğraf bağları korunur.
+- [ ] v4 → v5 migration mevcut saha verilerini kaybetmez.
+
+## 9. Notlar
 
 - [ ] Serbest not eklenir.
 - [ ] Tarih/saat otomatik görünür.
 - [ ] İkinci not ilk notu ezmeden kronolojiye eklenir.
 - [ ] Rapora dahil kutusu oluştururken ve sonradan değiştirilebilir.
 
-## 9. Problem / avantaj kanıt fotoğrafları
+## 10. Problem / avantaj kanıt fotoğrafları
 
 - [ ] Bir problem kaydında “Kanıt fotoğrafları” alanı görünür.
 - [ ] Aynı probleme art arda en az 5 fotoğraf eklenebilir.
@@ -110,7 +141,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] GKTE export/import sonrası fotoğraf → problem/avantaj bağı korunur.
 - [ ] v2 → v3 veritabanı migration mevcut genel fotoğrafları kaybetmez.
 
-## 10. Genel imalat fotoğrafları
+## 11. Genel imalat fotoğrafları
 
 - [ ] TEST-1 → bir imalat detayından kamera açılır.
 - [ ] Fotoğraf çekilir ve imalat ekranına döner.
@@ -121,7 +152,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Uygulama yeniden açılınca fotoğraf okunabilir.
 - [ ] Dikey ve yatay çekilen fotoğraflar raporda kabul edilebilir yönde görünür.
 
-## 11. Bağımsız blok parametreleri
+## 12. Bağımsız blok parametreleri
 
 - [ ] Yeni parametre tanımlanır: `Yatay tava var mı?`.
 - [ ] TEST-1 değeri `Evet`, TEST-2 değeri `Hayır` yapılır.
@@ -129,7 +160,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Tooltip açılır.
 - [ ] Aynı parametre tanımı başka blokta tekrar kullanılabilir.
 
-## 12. Matris
+## 13. Matris
 
 - [ ] Proje ekranından İmalat Matrisi açılır.
 - [ ] Yatay kaydırma çalışır.
@@ -137,12 +168,12 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Kusurlu/ağır kusurlu/bloke ayrımı görünür.
 - [ ] Açık problem bulunan hücrelerde P / P<n> işareti görünür.
 - [ ] Blok tipi filtresi yalnız seçilen tipin bloklarını gösterir.
-- [ ] Açık problem / Kusurlu / Bloke / Devam / Bitti filtreleri doğru kayıtları gösterir.
+- [ ] Açık problem / Açık eksik / Kusurlu / Bloke / Devam / Bitti filtreleri doğru kayıtları gösterir.
 - [ ] Filtre sonucu yoksa boş durum mesajı gösterilir.
 - [ ] Filtre temizlenince tüm matris geri gelir.
 - [ ] Bir hücreye dokununca doğru imalat detayına gider.
 
-## 13. PDF raporu
+## 14. PDF raporu
 
 - [ ] PDF dışa aktarılır.
 - [ ] Android paylaş menüsü açılır.
@@ -153,16 +184,16 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Fotoğraflar bozuk veya ezilmiş görünmez.
 - [ ] Uzun raporda sayfa geçişleri ve footer düzgündür.
 
-## 14. XLSX raporu
+## 15. XLSX raporu
 
 - [ ] XLSX dışa aktarılır.
 - [ ] Excel veya Google Sheets ile açılır.
-- [ ] `İmalat Matrisi`, `Problemler`, `Avantajlar`, `Notlar`, `Fotoğraflar` sayfaları vardır.
+- [ ] `İmalat Matrisi`, `Problemler`, `Avantajlar`, `Eksikler`, `Notlar`, `Fotoğraflar` sayfaları vardır.
 - [ ] Türkçe karakterler bozulmaz.
 - [ ] Matris verileri uygulamayla eşleşir.
 - [ ] Rapora dahil olmayan kayıtlar export'a girmez.
 
-## 15. GKTE export / Android ↔ Android taşıma
+## 16. GKTE export / Android ↔ Android taşıma
 
 - [ ] Projede birkaç durum, problem, avantaj, not ve fotoğraf oluşturulur.
 - [ ] Proje menüsünden `.gkte` dosyası üretilir.
@@ -175,7 +206,8 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] GKTE içe aktarılır ve yeni projenin ekranı otomatik açılır.
 - [ ] Yeni bağımsız proje oluşur; mevcut proje ezilmez.
 - [ ] Bloklar ve imalat durumları eşleşir.
-- [ ] Problem/avantaj/not kayıtları eşleşir.
+- [ ] Problem/avantaj/eksik/not kayıtları eşleşir.
+- [ ] Eksik durum, sorumlu, hedef tarih, öncelik ve fotoğraf ilişkileri eşleşir.
 - [ ] Fotoğraflar yeni projede açılır.
 - [ ] İçe aktarılmış projeden tekrar PDF/XLSX alınabilir.
 - [ ] İçe aktarılmış projeden yeniden `.gkte` alınabilir.
@@ -183,7 +215,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] `data.json` içindeki fotoğraf `localUri` değerleri Android cihaz URI'sına bağımlı değildir.
 - [ ] Eski `.sitepack` dosyası geriye dönük olarak hâlâ içe aktarılabilir.
 
-## 16. Dayanıklılık
+## 17. Dayanıklılık
 
 - [ ] Veri girerken uygulama force-stop edilip yeniden açılır.
 - [ ] Son kaydedilmiş veri korunur.
