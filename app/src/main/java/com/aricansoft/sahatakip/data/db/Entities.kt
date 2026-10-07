@@ -5,6 +5,8 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.aricansoft.sahatakip.data.model.ControlStatus
+import com.aricansoft.sahatakip.data.model.DeficiencyPriority
+import com.aricansoft.sahatakip.data.model.DeficiencyStatus
 import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.ProgressStatus
@@ -98,6 +100,24 @@ data class ProblemRecordEntity(
     val closedAt: Long? = null
 )
 
+@Entity(tableName = "deficiencies", indices=[Index("blockWorkItemId"), Index("status"), Index("targetDate")])
+data class DeficiencyEntity(
+    @PrimaryKey val id: String,
+    val blockWorkItemId: String,
+    val title: String,
+    val description: String? = null,
+    val floor: String? = null,
+    val unitNumber: String? = null,
+    val unitName: String? = null,
+    val responsible: String? = null,
+    val targetDate: String? = null,
+    val priority: DeficiencyPriority = DeficiencyPriority.NORMAL,
+    val status: DeficiencyStatus = DeficiencyStatus.OPEN,
+    val includeInReport: Boolean = true,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
 @Entity(tableName = "notes", indices=[Index("blockWorkItemId")])
 data class NoteEntity(
     @PrimaryKey val id: String,
@@ -107,11 +127,12 @@ data class NoteEntity(
     val createdAt: Long
 )
 
-@Entity(tableName = "photos", indices=[Index("blockWorkItemId"), Index("problemRecordId")])
+@Entity(tableName = "photos", indices=[Index("blockWorkItemId"), Index("problemRecordId"), Index("deficiencyId")])
 data class PhotoEntity(
     @PrimaryKey val id: String,
     val blockWorkItemId: String,
     val problemRecordId: String? = null,
+    val deficiencyId: String? = null,
     val localUri: String,
     val caption: String? = null,
     val includeInReport: Boolean = true,
