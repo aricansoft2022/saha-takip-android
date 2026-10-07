@@ -13,6 +13,7 @@ import android.net.Uri
 import android.os.Build
 import androidx.core.content.FileProvider
 import com.aricansoft.sahatakip.BuildConfig
+import com.aricansoft.sahatakip.data.model.DeficiencyStatus
 import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
@@ -46,6 +47,9 @@ object ReportExporter {
             val openAdvantages=snapshot.problems.count{
                 it.kind==FindingKind.ADVANTAGE && it.status==ProblemRecordStatus.OPEN
             }
+            val openDeficiencies=snapshot.deficiencies.count{
+                it.status!=DeficiencyStatus.VERIFIED
+            }
 
             writer.title("SAHA TAKİP RAPORU")
             writer.paragraph("Proje: "+snapshot.projectName)
@@ -58,17 +62,22 @@ object ReportExporter {
                     "   •   Kusurlu/ağır kusurlu: "+defective+
                     "   •   Bloke: "+blocked+
                     "   •   Açık rapor problemi: "+openProblems+
+                    "   •   Aktif eksik: "+openDeficiencies+
                     "   •   Açık rapor avantajı: "+openAdvantages
             )
             writer.spacer(8f)
 
             val problems=snapshot.problems.groupBy{it.blockWorkItemId}
+            val deficiencies=snapshot.deficiencies.groupBy{it.blockWorkItemId}
             val notes=snapshot.notes.groupBy{it.blockWorkItemId}
             val findingPhotos=snapshot.photos
                 .filter{it.problemRecordId!=null}
                 .groupBy{requireNotNull(it.problemRecordId)}
+            val deficiencyPhotos=snapshot.photos
+                .filter{it.deficiencyId!=null}
+                .groupBy{requireNotNull(it.deficiencyId)}
             val generalPhotos=snapshot.photos
-                .filter{it.problemRecordId==null}
+                .filter{it.problemRecordId==null && it.deficiencyId==null}
                 .groupBy{it.blockWorkItemId}
 
             snapshot.workItems.groupBy{it.blockCode}.forEach{entry->
@@ -81,6 +90,7 @@ object ReportExporter {
                         if(item.qualityStatus!=QualityStatus.NOT_EVALUATED) add(item.qualityStatus.label)
                         add(item.controlStatus.label)
                         if(item.isBlocked) add("Bloke")
+                        if(item.openDeficiencyCount>0) add("Aktif eksik: "+item.openDeficiencyCount)
                         if(item.workItemKind==WorkItemKind.RELATED_DISCIPLINE) add("Alakadar başka disiplin")
                     }.joinToString(" · ")
 
@@ -120,6 +130,46 @@ object ReportExporter {
                                 bitmap.recycle()
                             }else{
                                 writer.paragraph("[Kanıt fotoğrafı dosyası okunamadı]",indent=18f)
+                            }
+                        }
+                    }
+
+                    deficiencies[item.blockWorkItemId].orEmpty().forEach{deficiency->
+                        writer.bullet(
+                            "Eksik — "+deficiency.title+
+                                " ["+deficiency.status.label+"]"+
+                                " · Öncelik: "+deficiency.priority.label+
+                                " ("+formatDate(deficiency.createdAt)+")"
+                        )
+                        deficiency.description?.let{
+                            writer.paragraph("Açıklama — "+it,indent=18f)
+                        }
+                        val deficiencyLocation=buildList{
+                            deficiency.floor?.let{add("Kat: "+it)}
+                            deficiency.unitNumber?.let{add("No: "+it)}
+                            deficiency.unitName?.let{add("Mahal / daire / birim: "+it)}
+                        }.joinToString(" · ")
+                        if(deficiencyLocation.isNotBlank()){
+                            writer.paragraph(deficiencyLocation,indent=18f)
+                        }
+                        deficiency.responsible?.let{
+                            writer.paragraph("Sorumlu — "+it,indent=18f)
+                        }
+                        deficiency.targetDate?.let{
+                            writer.paragraph("Hedef tarih — "+it,indent=18f)
+                        }
+                        deficiencyPhotos[deficiency.deficiencyId].orEmpty().forEach{photo->
+                            writer.paragraph(
+                                "Eksik fotoğrafı — "+formatDate(photo.createdAt)+
+                                    (photo.caption?.let{" — "+it} ?: ""),
+                                indent=18f
+                            )
+                            val bitmap=decodeBitmap(context,Uri.parse(photo.localUri))
+                            if(bitmap!=null){
+                                writer.image(bitmap)
+                                bitmap.recycle()
+                            }else{
+                                writer.paragraph("[Eksik fotoğrafı dosyası okunamadı]",indent=18f)
                             }
                         }
                     }
