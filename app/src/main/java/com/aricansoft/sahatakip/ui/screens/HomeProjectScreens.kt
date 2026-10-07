@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.outlined.PictureAsPdf
+import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.*
@@ -43,6 +44,7 @@ import java.util.Locale
 private enum class HomeQuickFilter(val label:String){
     ALL("Tümü"),
     OPEN_PROBLEM("Açık problem"),
+    OPEN_DEFICIENCY("Açık eksik"),
     OPEN_ADVANTAGE("Açık avantaj"),
     DEFECTIVE("Kusurlu"),
     BLOCKED("Bloke"),
@@ -57,6 +59,7 @@ private data class HomeStatusCounts(
     val defective:Int,
     val blocked:Int,
     val openProblems:Int,
+    val openDeficiencies:Int,
     val openAdvantages:Int
 )
 
@@ -77,6 +80,7 @@ private fun ProjectQuickStatusRow.asHomeCounts()=HomeStatusCounts(
     defective=defectiveCount,
     blocked=blockedCount,
     openProblems=openProblemCount,
+    openDeficiencies=openDeficiencyCount,
     openAdvantages=openAdvantageCount
 )
 
@@ -87,6 +91,7 @@ private fun ProjectWorkItemQuickStatusRow.asHomeCounts()=HomeStatusCounts(
     defective=defectiveCount,
     blocked=blockedCount,
     openProblems=openProblemCount,
+    openDeficiencies=openDeficiencyCount,
     openAdvantages=openAdvantageCount
 )
 
@@ -97,12 +102,14 @@ private fun Iterable<HomeStatusCounts>.sumHomeCounts()=HomeStatusCounts(
     defective=sumOf{it.defective},
     blocked=sumOf{it.blocked},
     openProblems=sumOf{it.openProblems},
+    openDeficiencies=sumOf{it.openDeficiencies},
     openAdvantages=sumOf{it.openAdvantages}
 )
 
 private fun HomeStatusCounts.matches(filter:HomeQuickFilter)=when(filter){
     HomeQuickFilter.ALL -> total>0
     HomeQuickFilter.OPEN_PROBLEM -> openProblems>0
+    HomeQuickFilter.OPEN_DEFICIENCY -> openDeficiencies>0
     HomeQuickFilter.OPEN_ADVANTAGE -> openAdvantages>0
     HomeQuickFilter.DEFECTIVE -> defective>0
     HomeQuickFilter.BLOCKED -> blocked>0
@@ -112,6 +119,7 @@ private fun HomeStatusCounts.matches(filter:HomeQuickFilter)=when(filter){
 
 private fun HomeStatusCounts.summaryText():String=buildList{
     if(openProblems>0) add("P $openProblems")
+    if(openDeficiencies>0) add("Eksik $openDeficiencies")
     if(openAdvantages>0) add("A $openAdvantages")
     if(defective>0) add("Kusurlu $defective")
     if(blocked>0) add("Bloke $blocked")
@@ -432,7 +440,8 @@ fun ProjectScreen(
     projectId:String,
     onBack:()->Unit,
     onBlock:(String)->Unit,
-    onMatrix:()->Unit
+    onMatrix:()->Unit,
+    onDeficiencies:()->Unit
 ){
     val context=LocalContext.current
     val app=context.applicationContext as SahaTakipApplication
@@ -525,6 +534,9 @@ fun ProjectScreen(
                     }
                 },
                 actions={
+                    IconButton(onClick=onDeficiencies){
+                        Icon(Icons.Outlined.ReportProblem,contentDescription="Eksik takibi")
+                    }
                     IconButton(onClick=onMatrix){
                         Icon(Icons.Outlined.TableChart,contentDescription="İmalat matrisi")
                     }
