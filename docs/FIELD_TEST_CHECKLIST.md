@@ -97,6 +97,8 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Kat, mahal/daire/birim no ve adı girilebilir.
 - [ ] Sorumlu kişi/ekip girilebilir.
 - [ ] Hedef tarih `YYYY-AA-GG` biçiminde girilebilir.
+- [ ] Açılmış eksikte açıklama, konum, sorumlu, hedef tarih ve öncelik sonradan düzenlenebilir.
+- [ ] Eksik düzenlemek durum yaşam döngüsünü sıfırlamaz.
 - [ ] Öncelik Normal / Yüksek / Kritik seçilebilir.
 - [ ] Yeni eksik varsayılan olarak Açık durumundadır.
 - [ ] Yaşam döngüsü Açık → Gideriliyor → Giderildi → Kontrol edildi çalışır.
