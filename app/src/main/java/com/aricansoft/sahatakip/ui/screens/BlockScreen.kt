@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,12 +22,16 @@ import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.data.db.BlockAttributeDefinitionEntity
 import com.aricansoft.sahatakip.data.db.BlockAttributeRow
 import com.aricansoft.sahatakip.data.db.WorkItemDefinitionEntity
+import com.aricansoft.sahatakip.data.model.ProgressStatus
 import com.aricansoft.sahatakip.data.model.QualityStatus
 import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.data.model.WorkItemScope
 import com.aricansoft.sahatakip.ui.InfoTooltip
 import kotlinx.coroutines.launch
 import java.util.Locale
+
+private val relatedDisciplineAdvantageGreen=Color(0xFFE6F4D7)
+private val relatedDisciplineAdvantageGreenContent=Color(0xFF285F16)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -112,13 +117,22 @@ fun BlockScreen(
             ){
                 items(workItems.size,key={workItems[it].id}){index->
                     val item=workItems[index]
+                    val relatedNotStartedAdvantage=
+                        item.kind==WorkItemKind.RELATED_DISCIPLINE &&
+                            item.progressStatus==ProgressStatus.NOT_STARTED
+
+                    val cardContainerColor=when{
+                        item.openProblemCount>0 -> MaterialTheme.colorScheme.errorContainer
+                        item.openDeficiencyCount>0 -> MaterialTheme.colorScheme.tertiaryContainer
+                        relatedNotStartedAdvantage -> relatedDisciplineAdvantageGreen
+                        item.kind==WorkItemKind.RELATED_DISCIPLINE -> MaterialTheme.colorScheme.tertiaryContainer
+                        else -> MaterialTheme.colorScheme.surface
+                    }
+
                     Card(
                         modifier=Modifier.fillMaxWidth().clickable{onWorkItem(item.id)},
                         colors=CardDefaults.cardColors(
-                            containerColor=if(item.kind==WorkItemKind.RELATED_DISCIPLINE)
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            else
-                                MaterialTheme.colorScheme.surface
+                            containerColor=cardContainerColor
                         )
                     ){
                         Column(Modifier.fillMaxWidth().padding(14.dp)){
@@ -127,9 +141,15 @@ fun BlockScreen(
                                     Text(item.name,style=MaterialTheme.typography.titleSmall)
                                     if(item.kind==WorkItemKind.RELATED_DISCIPLINE){
                                         Text(
-                                            "ALAKADAR BAŞKA DİSİPLİN",
+                                            if(relatedNotStartedAdvantage)
+                                                "ALAKADAR BAŞKA DİSİPLİN · LEHİMİZE BAŞLANMADI"
+                                            else
+                                                "ALAKADAR BAŞKA DİSİPLİN",
                                             style=MaterialTheme.typography.labelSmall,
-                                            color=MaterialTheme.colorScheme.onTertiaryContainer
+                                            color=if(relatedNotStartedAdvantage)
+                                                relatedDisciplineAdvantageGreenContent
+                                            else
+                                                MaterialTheme.colorScheme.onTertiaryContainer
                                         )
                                     }
                                 }
