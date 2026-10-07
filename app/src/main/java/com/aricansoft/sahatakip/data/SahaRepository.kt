@@ -339,6 +339,45 @@ class SahaRepository(private val dao:SahaDao){
         return item
     }
 
+    suspend fun updateDeficiency(
+        id:String,
+        title:String,
+        description:String?=null,
+        floor:String?=null,
+        unitNumber:String?=null,
+        unitName:String?=null,
+        responsible:String?=null,
+        targetDate:String?=null,
+        priority:DeficiencyPriority=DeficiencyPriority.NORMAL,
+        includeInReport:Boolean=true
+    ){
+        val current=dao.getDeficiency(id) ?: return
+        val cleanTitle=title.trim()
+        require(cleanTitle.isNotBlank()){"Eksik tanımı boş olamaz."}
+        val cleanTarget=targetDate?.trim()?.ifBlank{null}
+        if(cleanTarget!=null){
+            require(Regex("""\d{4}-\d{2}-\d{2}""").matches(cleanTarget)){
+                "Hedef tarih YYYY-AA-GG biçiminde olmalı."
+            }
+        }
+        val now=System.currentTimeMillis()
+        dao.updateDeficiency(
+            current.copy(
+                title=cleanTitle,
+                description=description?.trim()?.ifBlank{null},
+                floor=floor?.trim()?.ifBlank{null},
+                unitNumber=unitNumber?.trim()?.ifBlank{null},
+                unitName=unitName?.trim()?.ifBlank{null},
+                responsible=responsible?.trim()?.ifBlank{null},
+                targetDate=cleanTarget,
+                priority=priority,
+                includeInReport=includeInReport,
+                updatedAt=now
+            )
+        )
+        audit(current.blockWorkItemId,AuditEventType.DEFICIENCY_UPDATED,"Eksik güncellendi: "+cleanTitle,now)
+    }
+
     suspend fun setDeficiencyStatus(id:String,status:DeficiencyStatus){
         val current=dao.getDeficiency(id) ?: return
         if(current.status==status) return
