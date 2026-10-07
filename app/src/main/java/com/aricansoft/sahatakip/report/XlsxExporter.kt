@@ -64,7 +64,7 @@ object XlsxExporter {
         val deficiencyRows=mutableListOf<List<String>>()
         deficiencyRows.add(listOf(
             "Blok","İmalat","Eksik","Açıklama","Kat","Mahal/Daire/Birim No",
-            "Mahal/Daire/Birim Adı","Sorumlu","Hedef Tarih","Öncelik","Durum","Açılış","Güncelleme"
+            "Mahal/Daire/Birim Adı","Hedef Tarih","Öncelik","Durum","Açılış","Güncelleme"
         ))
         snapshot.deficiencies.forEach{deficiency->
             deficiencyRows.add(listOf(
@@ -75,7 +75,6 @@ object XlsxExporter {
                 deficiency.floor.orEmpty(),
                 deficiency.unitNumber.orEmpty(),
                 deficiency.unitName.orEmpty(),
-                deficiency.responsible.orEmpty(),
                 deficiency.targetDate.orEmpty(),
                 deficiency.priority.label,
                 deficiency.status.label,
