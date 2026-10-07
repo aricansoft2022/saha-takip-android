@@ -195,6 +195,9 @@ class SitePackManager(
             }
             val tables=root.getJSONObject("tables")
             normalizeKindsForImport(tables)
+            if(!tables.has("deficiency_definitions")){
+                tables.put("deficiency_definitions",JSONArray())
+            }
             validateImportGraph(tables,strictPackage)
             if(!tables.has("deficiencies")){
                 tables.put("deficiencies",JSONArray())
@@ -210,6 +213,7 @@ class SitePackManager(
                 blockWorkItems=newIdMap(tables,"block_work_items","bwi"),
                 problemDefinitions=newIdMap(tables,"problem_definitions","pd"),
                 problemRecords=newIdMap(tables,"problem_records","pr"),
+                deficiencyDefinitions=newIdMap(tables,"deficiency_definitions","dd"),
                 deficiencies=newIdMap(tables,"deficiencies","def"),
                 notes=newIdMap(tables,"notes","note"),
                 photos=newIdMap(tables,"photos","photo"),
@@ -253,6 +257,7 @@ class SitePackManager(
                 WHERE b.projectId=?
             """.trimIndent(),
             "problem_definitions" to "SELECT * FROM problem_definitions WHERE projectId=?",
+            "deficiency_definitions" to "SELECT * FROM deficiency_definitions WHERE projectId=?",
             "problem_records" to """
                 SELECT pr.* FROM problem_records pr
                 JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
@@ -299,7 +304,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",6)
+            .put("databaseVersion",7)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
@@ -401,7 +406,7 @@ class SitePackManager(
     private fun validateImportGraph(tables:JSONObject,strictAssets:Boolean){
         val required=listOf(
             "projects","block_types","blocks","work_item_definitions","block_type_work_items",
-            "block_work_items","problem_definitions","problem_records","deficiencies","notes",
+            "block_work_items","problem_definitions","deficiency_definitions","problem_records","deficiencies","notes",
             "photos","block_attribute_definitions","block_attribute_values","audit_events"
         )
         required.forEach{require(tables.has(it)){"GKTE tablosu eksik: $it"}}
@@ -422,6 +427,7 @@ class SitePackManager(
         val workIds=ids("work_item_definitions")
         val bwiIds=ids("block_work_items")
         val problemDefIds=ids("problem_definitions")
+        ids("deficiency_definitions")
         val problemRecordIds=ids("problem_records")
         val deficiencyIds=ids("deficiencies")
         ids("notes")
@@ -451,6 +457,7 @@ class SitePackManager(
             bwiOwner[it.getString("id")]=it.getString("blockId")
         }
         forEachRow(tables,"problem_definitions"){requireRef(it,"projectId",projectIds,"problem_definitions")}
+        forEachRow(tables,"deficiency_definitions"){requireRef(it,"projectId",projectIds,"deficiency_definitions")}
         val problemOwner=mutableMapOf<String,String>()
         forEachRow(tables,"problem_records"){
             requireRef(it,"blockWorkItemId",bwiIds,"problem_records")
@@ -610,6 +617,9 @@ class SitePackManager(
         replaceIds(tables.getJSONArray("problem_definitions"),"id",m.problemDefinitions)
         replaceIds(tables.getJSONArray("problem_definitions"),"projectId",m.projects)
 
+        replaceIds(tables.getJSONArray("deficiency_definitions"),"id",m.deficiencyDefinitions)
+        replaceIds(tables.getJSONArray("deficiency_definitions"),"projectId",m.projects)
+
         replaceIds(tables.getJSONArray("problem_records"),"id",m.problemRecords)
         replaceIds(tables.getJSONArray("problem_records"),"blockWorkItemId",m.blockWorkItems)
         replaceIds(tables.getJSONArray("problem_records"),"problemDefinitionId",m.problemDefinitions)
@@ -693,6 +703,7 @@ class SitePackManager(
             "block_type_work_items",
             "block_work_items",
             "problem_definitions",
+            "deficiency_definitions",
             "problem_records",
             "deficiencies",
             "notes",
@@ -769,6 +780,7 @@ class SitePackManager(
         val blockWorkItems:Map<String,String>,
         val problemDefinitions:Map<String,String>,
         val problemRecords:Map<String,String>,
+        val deficiencyDefinitions:Map<String,String>,
         val deficiencies:Map<String,String>,
         val notes:Map<String,String>,
         val photos:Map<String,String>,
