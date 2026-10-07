@@ -336,6 +336,9 @@ interface SahaDao {
     @Query("SELECT * FROM work_item_definitions WHERE id=:id")
     suspend fun getWorkItemDefinition(id:String):WorkItemDefinitionEntity?
 
+    @Query("SELECT * FROM work_item_definitions WHERE projectId=:projectId")
+    suspend fun getWorkItemDefinitionsForProject(projectId:String):List<WorkItemDefinitionEntity>
+
     @Query("""
         SELECT * FROM work_item_definitions
         WHERE projectId=:projectId AND active=1
@@ -594,15 +597,15 @@ interface SahaDao {
     """)
     suspend fun getReportPhotos(projectId:String):List<ReportPhotoRow>
 
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertProjects(items:List<ProjectEntity>)
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlockTypes(items:List<BlockTypeEntity>)
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlocks(items:List<BlockEntity>)
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertWorkItemDefinitions(items:List<WorkItemDefinitionEntity>)
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlockTypeWorkItems(items:List<BlockTypeWorkItemEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertProjects(items:List<ProjectEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertBlockTypes(items:List<BlockTypeEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertBlocks(items:List<BlockEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertWorkItemDefinitions(items:List<WorkItemDefinitionEntity>)
+    @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertBlockTypeWorkItems(items:List<BlockTypeWorkItemEntity>)
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertBlockWorkItems(items:List<BlockWorkItemEntity>)
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertProblemDefinitions(items:List<ProblemDefinitionEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertProblemDefinitions(items:List<ProblemDefinitionEntity>)
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertProblemRecords(items:List<ProblemRecordEntity>)
-    @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlockAttributeDefinitions(items:List<BlockAttributeDefinitionEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertBlockAttributeDefinitions(items:List<BlockAttributeDefinitionEntity>)
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlockAttributeValues(items:List<BlockAttributeValueEntity>)
 
     @Insert suspend fun insertProblemDefinition(item:ProblemDefinitionEntity)

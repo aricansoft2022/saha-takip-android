@@ -18,8 +18,10 @@ class SahaTakipApplication:Application(){
                 SahaDatabase.MIGRATION_1_2,
                 SahaDatabase.MIGRATION_2_3,
                 SahaDatabase.MIGRATION_3_4,
-                SahaDatabase.MIGRATION_4_5
+                SahaDatabase.MIGRATION_4_5,
+                SahaDatabase.MIGRATION_5_6
             )
+            .addCallback(SahaDatabase.CALLBACK)
             .build()
     }
     val repository:SahaRepository by lazy{SahaRepository(database.sahaDao())}

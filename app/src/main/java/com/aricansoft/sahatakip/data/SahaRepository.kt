@@ -3,6 +3,8 @@ package com.aricansoft.sahatakip.data
 import com.aricansoft.sahatakip.data.db.*
 import com.aricansoft.sahatakip.data.model.*
 import com.aricansoft.sahatakip.report.ProjectReportSnapshot
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 import java.util.Locale
 import java.util.UUID
 
@@ -202,6 +204,13 @@ class SahaRepository(private val dao:SahaDao){
     ):WorkItemDefinitionEntity{
         val cleanName=name.trim()
         require(cleanName.isNotBlank()){"İmalat adı boş olamaz."}
+        val normalized=normalizeWorkItemName(cleanName)
+        val existing=dao.getWorkItemDefinitionsForProject(projectId)
+            .firstOrNull{normalizeWorkItemName(it.name)==normalized}
+        if(existing!=null){
+            attachWorkItem(blockId,existing.id,scope)
+            return existing
+        }
         val item=WorkItemDefinitionEntity(
             id="wi-"+UUID.randomUUID(),
             projectId=projectId,
@@ -311,12 +320,7 @@ class SahaRepository(private val dao:SahaDao){
     ):DeficiencyEntity{
         val cleanTitle=title.trim()
         require(cleanTitle.isNotBlank()){"Eksik tanımı boş olamaz."}
-        val cleanTarget=targetDate?.trim()?.ifBlank{null}
-        if(cleanTarget!=null){
-            require(Regex("""\d{4}-\d{2}-\d{2}""").matches(cleanTarget)){
-                "Hedef tarih YYYY-AA-GG biçiminde olmalı."
-            }
-        }
+        val cleanTarget=validateTargetDate(targetDate)
         val now=System.currentTimeMillis()
         val item=DeficiencyEntity(
             id="def-"+UUID.randomUUID(),
@@ -354,12 +358,7 @@ class SahaRepository(private val dao:SahaDao){
         val current=dao.getDeficiency(id) ?: return
         val cleanTitle=title.trim()
         require(cleanTitle.isNotBlank()){"Eksik tanımı boş olamaz."}
-        val cleanTarget=targetDate?.trim()?.ifBlank{null}
-        if(cleanTarget!=null){
-            require(Regex("""\d{4}-\d{2}-\d{2}""").matches(cleanTarget)){
-                "Hedef tarih YYYY-AA-GG biçiminde olmalı."
-            }
-        }
+        val cleanTarget=validateTargetDate(targetDate)
         val now=System.currentTimeMillis()
         dao.updateDeficiency(
             current.copy(
@@ -416,6 +415,17 @@ class SahaRepository(private val dao:SahaDao){
         problemRecordId:String?=null,
         deficiencyId:String?=null
     ){
+        require(problemRecordId==null || deficiencyId==null){
+            "Bir fotoğraf aynı anda hem problem/avantaj hem eksik kaydına bağlanamaz."
+        }
+        problemRecordId?.let{id->
+            val record=dao.getProblemRecord(id) ?: error("Problem/avantaj kaydı bulunamadı.")
+            require(record.blockWorkItemId==blockWorkItemId){"Fotoğraf problem/avantaj bağlamı uyuşmuyor."}
+        }
+        deficiencyId?.let{id->
+            val record=dao.getDeficiency(id) ?: error("Eksik kaydı bulunamadı.")
+            require(record.blockWorkItemId==blockWorkItemId){"Fotoğraf eksik bağlamı uyuşmuyor."}
+        }
         val now=System.currentTimeMillis()
         dao.insertPhoto(
             PhotoEntity(
@@ -458,6 +468,19 @@ class SahaRepository(private val dao:SahaDao){
         val now=System.currentTimeMillis()
         dao.updateBlockWorkItem(current.transform().copy(updatedAt=now))
         audit(id,AuditEventType.STATUS_CHANGED,detail,now)
+    }
+
+    private fun normalizeWorkItemName(value:String)=
+        value.trim().lowercase(Locale.forLanguageTag("tr-TR"))
+
+    private fun validateTargetDate(value:String?):String?{
+        val clean=value?.trim()?.ifBlank{null} ?: return null
+        try{
+            LocalDate.parse(clean)
+        }catch(_:DateTimeParseException){
+            throw IllegalArgumentException("Hedef tarih geçerli bir YYYY-AA-GG tarihi olmalı.")
+        }
+        return clean
     }
 
     private suspend fun audit(blockWorkItemId:String,type:AuditEventType,detail:String,at:Long){
