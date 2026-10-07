@@ -384,7 +384,7 @@ fun WorkItemDetailScreen(
                 showDeficiency=false
                 editingDeficiency=null
             },
-            onSave={title,description,floor,unitNumber,unitName,responsible,targetDate,priority,include->
+            onSave={title,description,floor,unitNumber,unitName,targetDate,priority,include->
                 val editing=editingDeficiency
                 scope.launch{
                     if(editing==null){
@@ -395,7 +395,6 @@ fun WorkItemDetailScreen(
                             floor=floor,
                             unitNumber=unitNumber,
                             unitName=unitName,
-                            responsible=responsible,
                             targetDate=targetDate,
                             priority=priority,
                             includeInReport=include
@@ -517,14 +516,13 @@ private fun DeficiencyDialog(
     initial:DeficiencyEntity?=null,
     definitions:List<DeficiencyDefinitionEntity>,
     onDismiss:()->Unit,
-    onSave:(String,String?,String?,String?,String?,String?,String?,DeficiencyPriority,Boolean)->Unit
+    onSave:(String,String?,String?,String?,String?,String?,DeficiencyPriority,Boolean)->Unit
 ){
     var title by remember(initial?.id){mutableStateOf(initial?.title.orEmpty())}
     var description by remember(initial?.id){mutableStateOf(initial?.description.orEmpty())}
     var floor by remember(initial?.id){mutableStateOf(initial?.floor.orEmpty())}
     var unitNumber by remember(initial?.id){mutableStateOf(initial?.unitNumber.orEmpty())}
     var unitName by remember(initial?.id){mutableStateOf(initial?.unitName.orEmpty())}
-    var responsible by remember(initial?.id){mutableStateOf(initial?.responsible.orEmpty())}
     var targetDate by remember(initial?.id){mutableStateOf(initial?.targetDate.orEmpty())}
     var priority by remember(initial?.id){mutableStateOf(initial?.priority ?: DeficiencyPriority.NORMAL)}
     var include by remember(initial?.id){mutableStateOf(initial?.includeInReport ?: true)}
@@ -609,12 +607,6 @@ private fun DeficiencyDialog(
                     )
                 }
                 OutlinedTextField(
-                    value=responsible,
-                    onValueChange={responsible=it},
-                    label={Text("Sorumlu kişi / ekip")},
-                    modifier=Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
                     value=targetDate,
                     onValueChange={targetDate=it},
                     label={Text("Hedef tarih (YYYY-AA-GG)")},
@@ -653,7 +645,6 @@ private fun DeficiencyDialog(
                         floor.trim().ifBlank{null},
                         unitNumber.trim().ifBlank{null},
                         unitName.trim().ifBlank{null},
-                        responsible.trim().ifBlank{null},
                         targetDate.trim().ifBlank{null},
                         priority,
                         include
