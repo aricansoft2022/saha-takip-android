@@ -2,6 +2,8 @@ package com.aricansoft.sahatakip.data.db
 
 import androidx.room.TypeConverter
 import com.aricansoft.sahatakip.data.model.ControlStatus
+import com.aricansoft.sahatakip.data.model.DeficiencyPriority
+import com.aricansoft.sahatakip.data.model.DeficiencyStatus
 import com.aricansoft.sahatakip.data.model.FindingKind
 import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.ProgressStatus
@@ -21,4 +23,8 @@ class Converters {
     @TypeConverter fun stringToWorkItemKind(value: String) = WorkItemKind.valueOf(value)
     @TypeConverter fun findingKindToString(value: FindingKind) = value.name
     @TypeConverter fun stringToFindingKind(value: String) = FindingKind.valueOf(value)
+    @TypeConverter fun deficiencyStatusToString(value: DeficiencyStatus) = value.name
+    @TypeConverter fun stringToDeficiencyStatus(value: String) = DeficiencyStatus.valueOf(value)
+    @TypeConverter fun deficiencyPriorityToString(value: DeficiencyPriority) = value.name
+    @TypeConverter fun stringToDeficiencyPriority(value: String) = DeficiencyPriority.valueOf(value)
 }
