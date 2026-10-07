@@ -32,6 +32,7 @@ private val matrixAdvantageContent=Color(0xFF285F16)
 private enum class MatrixFilter(val label:String){
     ALL("Tümü"),
     OPEN_PROBLEM("Açık problem"),
+    OPEN_DEFICIENCY("Açık eksik"),
     OPEN_ADVANTAGE("Açık avantaj"),
     RELATED_DISCIPLINE("Başka disiplin"),
     DEFECTIVE("Kusurlu"),
@@ -78,6 +79,7 @@ fun MatrixScreen(
             row.blockCode in visibleBlockCodes && when(selectedFilter){
                 MatrixFilter.ALL -> true
                 MatrixFilter.OPEN_PROBLEM -> row.openProblemCount>0
+                MatrixFilter.OPEN_DEFICIENCY -> row.openDeficiencyCount>0
                 MatrixFilter.OPEN_ADVANTAGE -> row.openAdvantageCount>0
                 MatrixFilter.RELATED_DISCIPLINE -> row.workItemKind==WorkItemKind.RELATED_DISCIPLINE
                 MatrixFilter.DEFECTIVE ->
@@ -166,7 +168,7 @@ fun MatrixScreen(
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem   A Açık avantaj",
+                            "✓ Bitti   ◐ Devam   ○ Başlanmadı   ! Kusurlu   !! Ağır kusurlu   B Bloke   P Açık problem   E Açık eksik   A Açık avantaj",
                             style=MaterialTheme.typography.bodySmall
                         )
                         Text(
@@ -276,6 +278,7 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
     val background=when{
         row==null -> MaterialTheme.colorScheme.surface
         row.openProblemCount>0 -> MaterialTheme.colorScheme.errorContainer
+        row.openDeficiencyCount>0 -> MaterialTheme.colorScheme.tertiaryContainer
         row.openAdvantageCount>0 -> matrixAdvantageContainer
         row.qualityStatus==QualityStatus.CRITICAL_DEFECT -> MaterialTheme.colorScheme.errorContainer
         row.qualityStatus==QualityStatus.DEFECTIVE -> MaterialTheme.colorScheme.errorContainer
@@ -302,6 +305,9 @@ private fun MatrixCell(row:ReportWorkItemRow?,onClick:(String)->Unit){
             if(row.isBlocked) add("B")
             if(row.openProblemCount>0){
                 add(if(row.openProblemCount==1)"P" else "P"+row.openProblemCount)
+            }
+            if(row.openDeficiencyCount>0){
+                add(if(row.openDeficiencyCount==1)"E" else "E"+row.openDeficiencyCount)
             }
             if(row.openAdvantageCount>0){
                 add(if(row.openAdvantageCount==1)"A" else "A"+row.openAdvantageCount)
