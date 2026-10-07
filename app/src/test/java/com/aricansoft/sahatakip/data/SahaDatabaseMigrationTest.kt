@@ -153,6 +153,91 @@ class SahaDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migration7To8RemovesResponsibilityAndPreservesDeficiencyEvidence(){
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val dbName="migration-7-8-"+UUID.randomUUID()+".db"
+        var helper:SupportSQLiteOpenHelper?=null
+        try{
+            helper=FrameworkSQLiteOpenHelperFactory().create(
+                SupportSQLiteOpenHelper.Configuration.builder(context)
+                    .name(dbName)
+                    .callback(object:SupportSQLiteOpenHelper.Callback(7){
+                        override fun onCreate(db:SupportSQLiteDatabase){
+                            db.execSQL("CREATE TABLE block_work_items(id TEXT NOT NULL PRIMARY KEY)")
+                            db.execSQL("CREATE TABLE problem_records(id TEXT NOT NULL PRIMARY KEY)")
+                            db.execSQL("""
+                                CREATE TABLE deficiencies(
+                                    id TEXT NOT NULL PRIMARY KEY,
+                                    blockWorkItemId TEXT NOT NULL,
+                                    title TEXT NOT NULL,
+                                    description TEXT,
+                                    floor TEXT,
+                                    unitNumber TEXT,
+                                    unitName TEXT,
+                                    responsible TEXT,
+                                    targetDate TEXT,
+                                    priority TEXT NOT NULL,
+                                    status TEXT NOT NULL,
+                                    includeInReport INTEGER NOT NULL,
+                                    createdAt INTEGER NOT NULL,
+                                    updatedAt INTEGER NOT NULL
+                                )
+                            """.trimIndent())
+                            db.execSQL("""
+                                CREATE TABLE photos(
+                                    id TEXT NOT NULL PRIMARY KEY,
+                                    blockWorkItemId TEXT NOT NULL,
+                                    problemRecordId TEXT,
+                                    deficiencyId TEXT,
+                                    localUri TEXT NOT NULL,
+                                    caption TEXT,
+                                    includeInReport INTEGER NOT NULL,
+                                    createdAt INTEGER NOT NULL
+                                )
+                            """.trimIndent())
+                            db.execSQL("INSERT INTO block_work_items VALUES('bwi1')")
+                            db.execSQL("""
+                                INSERT INTO deficiencies VALUES(
+                                    'd1','bwi1','Test eksiği','Açıklama','1','2','Daire 2',
+                                    'Eski ekip','2026-10-20','HIGH','OPEN',1,1,2
+                                )
+                            """.trimIndent())
+                            db.execSQL("""
+                                INSERT INTO photos VALUES(
+                                    'ph1','bwi1',NULL,'d1','content://photo/deficiency',NULL,1,3
+                                )
+                            """.trimIndent())
+                        }
+
+                        override fun onUpgrade(
+                            db:SupportSQLiteDatabase,
+                            oldVersion:Int,
+                            newVersion:Int
+                        )=Unit
+                    })
+                    .build()
+            )
+
+            val db=helper.writableDatabase
+            db.setForeignKeyConstraintsEnabled(true)
+            SahaDatabase.MIGRATION_7_8.migrate(db)
+
+            val columns=mutableListOf<String>()
+            db.query("PRAGMA table_info(deficiencies)").use{cursor->
+                val nameIndex=cursor.getColumnIndexOrThrow("name")
+                while(cursor.moveToNext()) columns+=cursor.getString(nameIndex)
+            }
+            assertFalse(columns.contains("responsible"))
+            assertEquals("Test eksiği",scalarString(db,"SELECT title FROM deficiencies WHERE id='d1'"))
+            assertEquals("d1",scalarString(db,"SELECT deficiencyId FROM photos WHERE id='ph1'"))
+            assertEquals("content://photo/deficiency",scalarString(db,"SELECT localUri FROM photos WHERE id='ph1'"))
+        }finally{
+            helper?.close()
+            context.deleteDatabase(dbName)
+        }
+    }
+
     private fun scalarString(db:SupportSQLiteDatabase,sql:String):String=
         db.query(sql).use{cursor->
             check(cursor.moveToFirst()){"Beklenen satır bulunamadı: $sql"}
