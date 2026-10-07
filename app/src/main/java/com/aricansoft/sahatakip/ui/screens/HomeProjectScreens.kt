@@ -71,8 +71,6 @@ private data class ProjectWorkItemOption(
 )
 
 private val trLocale=Locale.forLanguageTag("tr-TR")
-private fun normalizedWorkItemName(value:String)=value.trim().lowercase(trLocale)
-
 private fun ProjectQuickStatusRow.asHomeCounts()=HomeStatusCounts(
     total=totalWorkItemCount,
     inProgress=inProgressCount,
@@ -309,7 +307,7 @@ fun ProjectScreen(
 
     val workItemOptions=remember(matrixRows){
         matrixRows
-            .groupBy{normalizedWorkItemName(it.workItemName)}
+            .groupBy{it.workItemDefinitionId}
             .map{entry->
                 val representative=entry.value.first()
                 ProjectWorkItemOption(
@@ -341,7 +339,7 @@ fun ProjectScreen(
             emptyMap()
         }else{
             matrixRows
-                .filter{normalizedWorkItemName(it.workItemName)==key}
+                .filter{it.workItemDefinitionId==key}
                 .associateBy{it.blockCode}
         }
     }

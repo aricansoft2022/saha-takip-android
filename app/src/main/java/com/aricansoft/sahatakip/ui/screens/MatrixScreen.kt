@@ -42,6 +42,7 @@ private enum class MatrixFilter(val label:String){
 }
 
 private data class MatrixWorkRow(
+    val id:String,
     val name:String,
     val kind:WorkItemKind
 )
@@ -93,15 +94,18 @@ fun MatrixScreen(
     }
     val workRows=remember(visibleRows){
         visibleRows
-            .groupBy{it.workItemName}
-            .map{entry->MatrixWorkRow(entry.key,entry.value.first().workItemKind)}
+            .groupBy{it.workItemDefinitionId}
+            .map{entry->
+                val first=entry.value.first()
+                MatrixWorkRow(entry.key,first.workItemName,first.workItemKind)
+            }
             .sortedWith(
                 compareBy<MatrixWorkRow>{if(it.kind==WorkItemKind.ELECTRICAL)0 else 1}
                     .thenBy{it.name}
             )
     }
     val cellMap=remember(visibleRows){
-        visibleRows.associateBy{it.workItemName to it.blockCode}
+        visibleRows.associateBy{it.workItemDefinitionId to it.blockCode}
     }
     val horizontal=rememberScrollState()
     val vertical=rememberScrollState()
@@ -160,7 +164,7 @@ fun MatrixScreen(
                                 WorkNameCell(work)
                                 visibleBlocks.forEach{block->
                                     MatrixCell(
-                                        row=cellMap[work.name to block.code],
+                                        row=cellMap[work.id to block.code],
                                         onClick=onWorkItem
                                     )
                                 }

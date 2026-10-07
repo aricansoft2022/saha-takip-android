@@ -1,7 +1,10 @@
 package com.aricansoft.sahatakip.ui.screens
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -38,7 +41,9 @@ import com.aricansoft.sahatakip.ui.formatTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.max
 
 private val advantageContainer=Color(0xFFE6F4D7)
 private val advantageContent=Color(0xFF285F16)
@@ -346,21 +351,25 @@ fun WorkItemDetailScreen(
                 Spacer(Modifier.width(8.dp))
                 Text("Fotoğraf çek")
             }
-            photos.forEach{photo->
-                OutlinedCard(Modifier.fillMaxWidth()){
-                    Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
-                        LocalPhotoThumbnail(photo.localUri)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)){
-                            Text(formatTime(photo.createdAt))
-                            Row(verticalAlignment=Alignment.CenterVertically){
-                                Checkbox(
-                                    checked=photo.includeInReport,
-                                    onCheckedChange={checked->
-                                        scope.launch{repository.setPhotoReportInclusion(photo.id,checked)}
+            if(photos.isNotEmpty()){
+                LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    items(photos,key={it.id}){photo->
+                        OutlinedCard(Modifier.width(240.dp)){
+                            Row(Modifier.padding(8.dp),verticalAlignment=Alignment.CenterVertically){
+                                LocalPhotoThumbnail(photo.localUri)
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)){
+                                    Text(formatTime(photo.createdAt))
+                                    Row(verticalAlignment=Alignment.CenterVertically){
+                                        Checkbox(
+                                            checked=photo.includeInReport,
+                                            onCheckedChange={checked->
+                                                scope.launch{repository.setPhotoReportInclusion(photo.id,checked)}
+                                            }
+                                        )
+                                        Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
                                     }
-                                )
-                                Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+                                }
                             }
                         }
                     }
@@ -638,22 +647,26 @@ private fun FindingEvidencePhotos(
             }
         }
 
-        photos.forEach{photo->
-            OutlinedCard(Modifier.fillMaxWidth()){
-                Row(
-                    Modifier.fillMaxWidth().padding(8.dp),
-                    verticalAlignment=Alignment.CenterVertically
-                ){
-                    LocalPhotoThumbnail(photo.localUri)
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)){
-                        Text(formatTime(photo.createdAt),style=MaterialTheme.typography.bodySmall)
-                        Row(verticalAlignment=Alignment.CenterVertically){
-                            Checkbox(
-                                checked=photo.includeInReport,
-                                onCheckedChange={checked->onToggleReport(photo.id,checked)}
-                            )
-                            Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+        if(photos.isNotEmpty()){
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                items(photos,key={it.id}){photo->
+                    OutlinedCard(Modifier.width(240.dp)){
+                        Row(
+                            Modifier.fillMaxWidth().padding(8.dp),
+                            verticalAlignment=Alignment.CenterVertically
+                        ){
+                            LocalPhotoThumbnail(photo.localUri)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)){
+                                Text(formatTime(photo.createdAt),style=MaterialTheme.typography.bodySmall)
+                                Row(verticalAlignment=Alignment.CenterVertically){
+                                    Checkbox(
+                                        checked=photo.includeInReport,
+                                        onCheckedChange={checked->onToggleReport(photo.id,checked)}
+                                    )
+                                    Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+                                }
+                            }
                         }
                     }
                 }
@@ -803,22 +816,26 @@ private fun DeficiencyEvidencePhotos(
                 Text("Fotoğraf ekle")
             }
         }
-        photos.forEach{photo->
-            OutlinedCard(Modifier.fillMaxWidth()){
-                Row(
-                    Modifier.fillMaxWidth().padding(8.dp),
-                    verticalAlignment=Alignment.CenterVertically
-                ){
-                    LocalPhotoThumbnail(photo.localUri)
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)){
-                        Text(formatTime(photo.createdAt),style=MaterialTheme.typography.bodySmall)
-                        Row(verticalAlignment=Alignment.CenterVertically){
-                            Checkbox(
-                                checked=photo.includeInReport,
-                                onCheckedChange={checked->onToggleReport(photo.id,checked)}
-                            )
-                            Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+        if(photos.isNotEmpty()){
+            LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                items(photos,key={it.id}){photo->
+                    OutlinedCard(Modifier.width(240.dp)){
+                        Row(
+                            Modifier.fillMaxWidth().padding(8.dp),
+                            verticalAlignment=Alignment.CenterVertically
+                        ){
+                            LocalPhotoThumbnail(photo.localUri)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)){
+                                Text(formatTime(photo.createdAt),style=MaterialTheme.typography.bodySmall)
+                                Row(verticalAlignment=Alignment.CenterVertically){
+                                    Checkbox(
+                                        checked=photo.includeInReport,
+                                        onCheckedChange={checked->onToggleReport(photo.id,checked)}
+                                    )
+                                    Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+                                }
+                            }
                         }
                     }
                 }
@@ -845,7 +862,7 @@ private fun DeficiencyDialog(
     var targetDate by remember(initial?.id){mutableStateOf(initial?.targetDate.orEmpty())}
     var priority by remember(initial?.id){mutableStateOf(initial?.priority ?: DeficiencyPriority.NORMAL)}
     var include by remember(initial?.id){mutableStateOf(initial?.includeInReport ?: true)}
-    val targetValid=targetDate.isBlank() || Regex("""\d{4}-\d{2}-\d{2}""").matches(targetDate.trim())
+    val targetValid=targetDate.isBlank() || runCatching{LocalDate.parse(targetDate.trim())}.isSuccess
 
     AlertDialog(
         onDismissRequest=onDismiss,
@@ -1225,11 +1242,14 @@ private fun FindingDialog(
 @Composable
 private fun LocalPhotoThumbnail(uriString:String){
     val context=LocalContext.current
-    val bitmap by produceState<android.graphics.Bitmap?>(null,uriString){
+    val bitmap by produceState<Bitmap?>(null,uriString){
         value=withContext(Dispatchers.IO){
-            runCatching{
-                context.contentResolver.openInputStream(Uri.parse(uriString)).use{BitmapFactory.decodeStream(it)}
-            }.getOrNull()
+            decodeThumbnail(context,Uri.parse(uriString),256)
+        }
+    }
+    DisposableEffect(bitmap){
+        onDispose{
+            bitmap?.takeIf{!it.isRecycled}?.recycle()
         }
     }
     Surface(
@@ -1238,7 +1258,7 @@ private fun LocalPhotoThumbnail(uriString:String){
         tonalElevation=2.dp
     ){
         val bmp=bitmap
-        if(bmp!=null){
+        if(bmp!=null && !bmp.isRecycled){
             Image(
                 bitmap=bmp.asImageBitmap(),
                 contentDescription="Saha fotoğrafı",
@@ -1252,3 +1272,30 @@ private fun LocalPhotoThumbnail(uriString:String){
         }
     }
 }
+
+private fun decodeThumbnail(context:android.content.Context,uri:Uri,maxPx:Int):Bitmap?=runCatching{
+    if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.P){
+        val source=ImageDecoder.createSource(context.contentResolver,uri)
+        ImageDecoder.decodeBitmap(source){decoder,info,_->
+            val width=info.size.width.coerceAtLeast(1)
+            val height=info.size.height.coerceAtLeast(1)
+            val longest=max(width,height)
+            if(longest>maxPx){
+                val scale=maxPx.toFloat()/longest.toFloat()
+                decoder.setTargetSize(
+                    (width*scale).toInt().coerceAtLeast(1),
+                    (height*scale).toInt().coerceAtLeast(1)
+                )
+            }
+        }
+    }else{
+        val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true}
+        context.contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it,null,bounds)}
+        val longest=max(bounds.outWidth,bounds.outHeight).coerceAtLeast(1)
+        var sample=1
+        while(longest/sample>maxPx*2) sample*=2
+        val options=BitmapFactory.Options().apply{inSampleSize=sample.coerceAtLeast(1)}
+        context.contentResolver.openInputStream(uri)?.use{BitmapFactory.decodeStream(it,null,options)}
+    }
+}.getOrNull()
+

@@ -203,6 +203,7 @@ object ReportExporter {
             document.close()
         }
 
+        pruneFiles(reportDir,".pdf",5)
         return FileProvider.getUriForFile(
             context,
             BuildConfig.APPLICATION_ID+".fileprovider",
@@ -222,6 +223,14 @@ object ReportExporter {
             context.contentResolver.openInputStream(uri).use{BitmapFactory.decodeStream(it)}
         }
     }.getOrNull()
+
+    private fun pruneFiles(dir:File,extension:String,keep:Int){
+        dir.listFiles()
+            ?.filter{it.isFile && it.name.endsWith(extension,ignoreCase=true)}
+            ?.sortedByDescending{it.lastModified()}
+            ?.drop(keep)
+            ?.forEach{it.delete()}
+    }
 
     private fun formatDate(epochMillis:Long)=Instant.ofEpochMilli(epochMillis)
         .atZone(ZoneId.systemDefault())

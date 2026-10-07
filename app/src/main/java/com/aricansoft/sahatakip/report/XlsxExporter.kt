@@ -30,13 +30,16 @@ object XlsxExporter {
         val deficiencyById=snapshot.deficiencies.associateBy{it.deficiencyId}
         val blockCodes=snapshot.workItems.map{it.blockCode}.distinct()
         val workRows=snapshot.workItems
-            .groupBy{it.workItemName}
-            .map{entry->entry.key to entry.value.first().workItemKind}
+            .groupBy{it.workItemDefinitionId}
+            .map{entry->
+                val first=entry.value.first()
+                Triple(entry.key,first.workItemName,first.workItemKind)
+            }
             .sortedWith(
-                compareBy<Pair<String,WorkItemKind>>{if(it.second==WorkItemKind.ELECTRICAL)0 else 1}
-                    .thenBy{it.first}
+                compareBy<Triple<String,String,WorkItemKind>>{if(it.third==WorkItemKind.ELECTRICAL)0 else 1}
+                    .thenBy{it.second}
             )
-        val matrix=snapshot.workItems.associateBy{it.workItemName to it.blockCode}
+        val matrix=snapshot.workItems.associateBy{it.workItemDefinitionId to it.blockCode}
 
         val matrixRows=mutableListOf<List<String>>()
         matrixRows.add(listOf(snapshot.projectName))
@@ -46,8 +49,8 @@ object XlsxExporter {
         workRows.forEach{work->
             matrixRows.add(
                 listOf(
-                    work.first,
-                    if(work.second==WorkItemKind.RELATED_DISCIPLINE)"Alakadar başka disiplin" else "Elektrik"
+                    work.second,
+                    if(work.third==WorkItemKind.RELATED_DISCIPLINE)"Alakadar başka disiplin" else "Elektrik"
                 )+
                     blockCodes.map{block->
                         matrix[work.first to block]?.let{statusText(it)} ?: ""
@@ -127,6 +130,7 @@ object XlsxExporter {
             putText(zip,"xl/worksheets/sheet6.xml",worksheet(photoRows))
         }
 
+        pruneFiles(reportDir,".xlsx",5)
         return FileProvider.getUriForFile(
             context,
             BuildConfig.APPLICATION_ID+".fileprovider",
@@ -264,6 +268,14 @@ object XlsxExporter {
             .replace(">","&gt;")
             .replace("\"","&quot;")
             .replace("'","&apos;")
+    }
+
+    private fun pruneFiles(dir:File,extension:String,keep:Int){
+        dir.listFiles()
+            ?.filter{it.isFile && it.name.endsWith(extension,ignoreCase=true)}
+            ?.sortedByDescending{it.lastModified()}
+            ?.drop(keep)
+            ?.forEach{it.delete()}
     }
 
     private fun formatDate(epochMillis:Long)=Instant.ofEpochMilli(epochMillis)

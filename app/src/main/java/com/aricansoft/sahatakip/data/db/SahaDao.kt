@@ -82,6 +82,7 @@ data class ProjectWorkItemQuickStatusRow(
 data class ReportWorkItemRow(
     val blockWorkItemId:String,
     val blockCode:String,
+    val workItemDefinitionId:String,
     val workItemName:String,
     val workItemKind:com.aricansoft.sahatakip.data.model.WorkItemKind,
     val progressStatus:com.aricansoft.sahatakip.data.model.ProgressStatus,
@@ -480,7 +481,8 @@ interface SahaDao {
     suspend fun getPhotoContext(blockWorkItemId:String):PhotoContextRow?
 
     @Query("""
-        SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
+        SELECT bwi.id AS blockWorkItemId, b.code AS blockCode,
+               wid.id AS workItemDefinitionId, wid.name AS workItemName,
                wid.kind AS workItemKind,
                bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked,
                (SELECT COUNT(*) FROM problem_records pr
@@ -501,7 +503,8 @@ interface SahaDao {
     suspend fun getReportWorkItems(projectId:String):List<ReportWorkItemRow>
 
     @Query("""
-        SELECT bwi.id AS blockWorkItemId, b.code AS blockCode, wid.name AS workItemName,
+        SELECT bwi.id AS blockWorkItemId, b.code AS blockCode,
+               wid.id AS workItemDefinitionId, wid.name AS workItemName,
                wid.kind AS workItemKind,
                bwi.progressStatus, bwi.qualityStatus, bwi.controlStatus, bwi.isBlocked,
                (SELECT COUNT(*) FROM problem_records pr
