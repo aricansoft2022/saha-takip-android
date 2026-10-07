@@ -38,7 +38,7 @@ Required v1 fields:
   "format": "GKTE",
   "formatVersion": 1,
   "minReaderVersion": 1,
-  "databaseVersion": 4,
+  "databaseVersion": 5,
   "fileExtension": ".gkte",
   "mimeType": "application/vnd.aricansoft.gkte",
   "encoding": "UTF-8",
@@ -69,7 +69,7 @@ Top level:
 ```json
 {
   "formatVersion": 1,
-  "databaseVersion": 2,
+  "databaseVersion": 5,
   "meta": {
     "projectId": "...",
     "projectName": "...",
@@ -99,6 +99,7 @@ Current table collections:
 - `block_work_items`
 - `problem_definitions`
 - `problem_records`
+- `deficiencies`
 - `notes`
 - `photos`
 - `block_attribute_definitions`
@@ -122,11 +123,18 @@ For portability, exported photo rows carry an empty `localUri`. The binary asset
 A photo row may contain:
 
 - `blockWorkItemId` — always present;
-- `problemRecordId` — nullable. When present, the photo is evidence belonging to that exact problem/advantage record.
+- `problemRecordId` — nullable. When present, the photo is evidence belonging to that exact problem/advantage record;
+- `deficiencyId` — nullable. When present, the photo is evidence belonging to that exact deficiency record.
 
-There is no format-level photo-count limit per finding.
+There is no format-level photo-count limit per finding or deficiency.
 
-On import, each platform creates its own local file/URI reference and must preserve the optional `problemRecordId` relationship.
+`deficiencies` carries the deficiency lifecycle and management metadata. Stable wire enum values:
+- status: `OPEN`, `IN_PROGRESS`, `FIXED`, `VERIFIED`
+- priority: `NORMAL`, `HIGH`, `CRITICAL`
+
+A deficiency remains active until status `VERIFIED`.
+
+On import, each platform creates its own local file/URI reference and must preserve optional `problemRecordId` and `deficiencyId` relationships.
 
 A future Windows reader must therefore use the photo ID + `photos/` convention, not Android URI semantics.
 
