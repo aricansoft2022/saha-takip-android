@@ -48,6 +48,8 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 ## 5. İmalat kataloğu ve kapsam
 
 - [ ] TEST-1 içinde yeni imalat tanımlanır.
+- [ ] Blok imalat listesindeki her imalat kartında `i` bilgi ikonu görünür.
+- [ ] Özel tooltip tanımlanmamış imalatta bilgi ikonu varsayılan anlamlı açıklama gösterir.
 - [ ] “Yalnız bu blok” ile TEST-2'ye yayılmadığı doğrulanır.
 - [ ] Başka bir imalat “aynı blok tipi” kapsamıyla eklenir.
 - [ ] TEST-1 ve TEST-2'de göründüğü doğrulanır.
@@ -88,6 +90,8 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 - [ ] Mahal / daire / birim adı girilebilir.
 - [ ] Aynı katalog problemi iki farklı kat/daire bağlamıyla ayrı saha kaydı olarak eklenebilir.
 - [ ] Problem kartında özel tanım + kat + no + ad doğru görünür.
+- [ ] Problemler başlığında aktif sayaç her zaman görünür; kayıt yoksa `0 aktif`.
+- [ ] Avantajlar başlığında aktif sayaç her zaman görünür; kayıt yoksa `0 aktif`.
 - [ ] Aynı alanlar avantaj kaydında da çalışır.
 - [ ] PDF ve XLSX bu saha bağlamını korur.
 - [ ] GKTE export/import sonrası özel tanım ve konum alanları korunur.
@@ -101,6 +105,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 
 ## 9. İmalat eksik takip yönetimi
 
+- [ ] İmalat Eksikleri başlığında aktif sayaç her zaman görünür; eksik yoksa `0 aktif`.
 - [ ] Bir imalat detayından yeni eksik açılabilir.
 - [ ] Eksik başlığı zorunludur; açıklama opsiyoneldir.
 - [ ] Kat, mahal/daire/birim no ve adı girilebilir.
@@ -155,6 +160,7 @@ Bu liste `main` merge öncesi gerçek Android cihazda uygulanmalıdır. Derlemen
 
 ## 12. Genel imalat fotoğrafları
 
+- [ ] Fotoğraflar başlığında toplam fotoğraf sayısı her zaman görünür; fotoğraf yoksa `0 fotoğraf`.
 - [ ] TEST-1 → bir imalat detayından kamera açılır.
 - [ ] Fotoğraf çekilir ve imalat ekranına döner.
 - [ ] Fotoğraf thumbnail'i görünür.
