@@ -17,6 +17,7 @@ class SahaRepository(private val dao:SahaDao){
     fun observeWorkItemDefinitions(projectId:String)=dao.observeWorkItemDefinitions(projectId)
     fun observeProblemDefinitions(projectId:String)=dao.observeProblemDefinitions(projectId)
     fun observeProblemRecords(blockWorkItemId:String)=dao.observeProblemRecords(blockWorkItemId)
+    fun observeProjectFindings(projectId:String)=dao.observeProjectFindings(projectId)
     fun observeDeficiencies(blockWorkItemId:String)=dao.observeDeficiencies(blockWorkItemId)
     fun observeProjectDeficiencies(projectId:String)=dao.observeProjectDeficiencies(projectId)
     fun observeNotes(blockWorkItemId:String)=dao.observeNotes(blockWorkItemId)

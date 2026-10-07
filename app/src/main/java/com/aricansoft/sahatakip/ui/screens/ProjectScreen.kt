@@ -34,6 +34,9 @@ import com.aricansoft.sahatakip.data.normalizeWorkItemName
 import com.aricansoft.sahatakip.data.db.BlockTypeEntity
 import com.aricansoft.sahatakip.data.db.ProjectQuickStatusRow
 import com.aricansoft.sahatakip.data.db.ReportWorkItemRow
+import com.aricansoft.sahatakip.data.model.DeficiencyStatus
+import com.aricansoft.sahatakip.data.model.FindingKind
+import com.aricansoft.sahatakip.data.model.ProblemRecordStatus
 import com.aricansoft.sahatakip.data.model.WorkItemKind
 import com.aricansoft.sahatakip.report.ReportExporter
 import com.aricansoft.sahatakip.report.XlsxExporter
@@ -68,11 +71,18 @@ fun ProjectScreen(
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val matrixRows by remember(projectId){repository.observeProjectMatrixRows(projectId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
+    val projectFindings by remember(projectId){repository.observeProjectFindings(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+    val projectDeficiencies by remember(projectId){repository.observeProjectDeficiencies(projectId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
 
     var selectedWorkItemKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
     var selectedWorkItemStatus by rememberSaveable(projectId){mutableStateOf(HomeQuickFilter.ALL)}
     var workItemMenuExpanded by remember{mutableStateOf(false)}
     var workItemSearch by remember{mutableStateOf("")}
+    var selectedProblemKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
+    var selectedAdvantageKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
+    var selectedDeficiencyKey by rememberSaveable(projectId){mutableStateOf<String?>(null)}
 
     val workItemOptions=remember(matrixRows){
         matrixRows
@@ -113,15 +123,109 @@ fun ProjectScreen(
         }
     }
 
-    val visibleBlocks=remember(blocks,selectedRowsByBlockCode,selectedWorkItemKey,selectedWorkItemStatus){
-        if(selectedWorkItemKey==null){
-            blocks
-        }else{
-            blocks.filter{block->
+    val scopedFindings=remember(projectFindings,selectedWorkItemKey){
+        val key=selectedWorkItemKey
+        if(key==null) projectFindings else projectFindings.filter{it.workItemDefinitionId==key}
+    }
+    val scopedDeficiencies=remember(projectDeficiencies,selectedWorkItemKey){
+        val key=selectedWorkItemKey
+        if(key==null) projectDeficiencies else projectDeficiencies.filter{it.workItemDefinitionId==key}
+    }
+
+    val problemOptions=remember(scopedFindings){
+        scopedFindings
+            .filter{it.kind==FindingKind.PROBLEM && it.status==ProblemRecordStatus.OPEN}
+            .groupBy{it.problemDefinitionId}
+            .map{(key,rows)->
+                val first=rows.first()
+                ProjectFilterOption(key,first.code+" — "+first.title,rows.map{it.blockCode}.distinct().size)
+            }
+            .sortedBy{it.label.lowercase(trLocale)}
+    }
+    val advantageOptions=remember(scopedFindings){
+        scopedFindings
+            .filter{it.kind==FindingKind.ADVANTAGE && it.status==ProblemRecordStatus.OPEN}
+            .groupBy{it.problemDefinitionId}
+            .map{(key,rows)->
+                val first=rows.first()
+                ProjectFilterOption(key,first.code+" — "+first.title,rows.map{it.blockCode}.distinct().size)
+            }
+            .sortedBy{it.label.lowercase(trLocale)}
+    }
+    val deficiencyOptions=remember(scopedDeficiencies){
+        scopedDeficiencies
+            .filter{it.status!=DeficiencyStatus.VERIFIED}
+            .groupBy{normalizeWorkItemName(it.title)}
+            .map{(key,rows)->
+                ProjectFilterOption(key,rows.first().title,rows.map{it.blockCode}.distinct().size)
+            }
+            .sortedBy{it.label.lowercase(trLocale)}
+    }
+
+    LaunchedEffect(problemOptions,selectedProblemKey){
+        if(selectedProblemKey!=null && problemOptions.none{it.key==selectedProblemKey}) selectedProblemKey=null
+    }
+    LaunchedEffect(advantageOptions,selectedAdvantageKey){
+        if(selectedAdvantageKey!=null && advantageOptions.none{it.key==selectedAdvantageKey}) selectedAdvantageKey=null
+    }
+    LaunchedEffect(deficiencyOptions,selectedDeficiencyKey){
+        if(selectedDeficiencyKey!=null && deficiencyOptions.none{it.key==selectedDeficiencyKey}) selectedDeficiencyKey=null
+    }
+
+    val problemBlockCodes=remember(scopedFindings,selectedProblemKey){
+        selectedProblemKey?.let{key->
+            scopedFindings
+                .filter{
+                    it.problemDefinitionId==key &&
+                        it.kind==FindingKind.PROBLEM &&
+                        it.status==ProblemRecordStatus.OPEN
+                }
+                .map{it.blockCode}
+                .toSet()
+        }
+    }
+    val advantageBlockCodes=remember(scopedFindings,selectedAdvantageKey){
+        selectedAdvantageKey?.let{key->
+            scopedFindings
+                .filter{
+                    it.problemDefinitionId==key &&
+                        it.kind==FindingKind.ADVANTAGE &&
+                        it.status==ProblemRecordStatus.OPEN
+                }
+                .map{it.blockCode}
+                .toSet()
+        }
+    }
+    val deficiencyBlockCodes=remember(scopedDeficiencies,selectedDeficiencyKey){
+        selectedDeficiencyKey?.let{key->
+            scopedDeficiencies
+                .filter{it.status!=DeficiencyStatus.VERIFIED && normalizeWorkItemName(it.title)==key}
+                .map{it.blockCode}
+                .toSet()
+        }
+    }
+
+    val visibleBlocks=remember(
+        blocks,
+        selectedRowsByBlockCode,
+        selectedWorkItemKey,
+        selectedWorkItemStatus,
+        problemBlockCodes,
+        advantageBlockCodes,
+        deficiencyBlockCodes
+    ){
+        blocks.filter{block->
+            val workItemMatches=if(selectedWorkItemKey==null){
+                true
+            }else{
                 val row=selectedRowsByBlockCode[block.code] ?: return@filter false
                 selectedWorkItemStatus==HomeQuickFilter.ALL ||
                     row.asHomeCounts().matches(selectedWorkItemStatus)
             }
+            workItemMatches &&
+                (problemBlockCodes==null || block.code in problemBlockCodes) &&
+                (advantageBlockCodes==null || block.code in advantageBlockCodes) &&
+                (deficiencyBlockCodes==null || block.code in deficiencyBlockCodes)
         }
     }
 
@@ -352,6 +456,34 @@ fun ProjectScreen(
                         }
                     }
 
+                    ProjectRecordFilter(
+                        title="Problem filtresi",
+                        allLabel="Tüm problemler",
+                        searchLabel="Problem ara",
+                        emptyLabel="Açık problem yok",
+                        options=problemOptions,
+                        selectedKey=selectedProblemKey,
+                        onSelected={selectedProblemKey=it}
+                    )
+                    ProjectRecordFilter(
+                        title="Avantaj filtresi",
+                        allLabel="Tüm avantajlar",
+                        searchLabel="Avantaj ara",
+                        emptyLabel="Açık avantaj yok",
+                        options=advantageOptions,
+                        selectedKey=selectedAdvantageKey,
+                        onSelected={selectedAdvantageKey=it}
+                    )
+                    ProjectRecordFilter(
+                        title="Eksik filtresi",
+                        allLabel="Tüm eksikler",
+                        searchLabel="Eksik ara",
+                        emptyLabel="Aktif eksik yok",
+                        options=deficiencyOptions,
+                        selectedKey=selectedDeficiencyKey,
+                        onSelected={selectedDeficiencyKey=it}
+                    )
+
                     selectedWorkItem?.let{option->
                         Text("Seçili imalat durumu",style=MaterialTheme.typography.labelLarge)
                         LazyRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -381,10 +513,10 @@ fun ProjectScreen(
             if(visibleBlocks.isEmpty()){
                 Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){
                     Text(
-                        if(selectedWorkItem==null)
+                        if(blocks.isEmpty())
                             "Projede blok yok."
                         else
-                            "Seçili imalat ve durumda blok yok."
+                            "Seçili filtrelere uyan blok yok."
                     )
                 }
             }else{
@@ -455,6 +587,89 @@ fun ProjectScreen(
                 }
             }
         )
+    }
+}
+
+
+@Composable
+private fun ProjectRecordFilter(
+    title:String,
+    allLabel:String,
+    searchLabel:String,
+    emptyLabel:String,
+    options:List<ProjectFilterOption>,
+    selectedKey:String?,
+    onSelected:(String?)->Unit
+){
+    var expanded by remember{mutableStateOf(false)}
+    var search by remember{mutableStateOf("")}
+    val selected=options.firstOrNull{it.key==selectedKey}
+    val normalizedSearch=normalizeWorkItemName(search)
+    val visibleOptions=options.filter{
+        normalizedSearch.isBlank() || normalizeWorkItemName(it.label).contains(normalizedSearch)
+    }
+
+    Text(title,style=MaterialTheme.typography.labelLarge)
+    Box(Modifier.fillMaxWidth()){
+        OutlinedButton(
+            onClick={expanded=true},
+            modifier=Modifier.fillMaxWidth()
+        ){
+            Column(Modifier.weight(1f),horizontalAlignment=Alignment.Start){
+                Text(selected?.label ?: allLabel)
+                selected?.let{
+                    Text(it.blockCount.toString()+" blok",style=MaterialTheme.typography.labelSmall)
+                }
+            }
+            Text("▼")
+        }
+        DropdownMenu(
+            expanded=expanded,
+            onDismissRequest={
+                expanded=false
+                search=""
+            },
+            modifier=Modifier.fillMaxWidth()
+        ){
+            DropdownMenuItem(
+                text={Text(allLabel)},
+                onClick={
+                    onSelected(null)
+                    expanded=false
+                    search=""
+                }
+            )
+            HorizontalDivider()
+            OutlinedTextField(
+                value=search,
+                onValueChange={search=it},
+                label={Text(searchLabel)},
+                modifier=Modifier.padding(horizontal=8.dp).fillMaxWidth(),
+                singleLine=true
+            )
+            visibleOptions.forEach{option->
+                DropdownMenuItem(
+                    text={
+                        Column{
+                            Text(option.label)
+                            Text(option.blockCount.toString()+" blok",style=MaterialTheme.typography.labelSmall)
+                        }
+                    },
+                    onClick={
+                        onSelected(option.key)
+                        expanded=false
+                        search=""
+                    }
+                )
+            }
+            if(visibleOptions.isEmpty()){
+                DropdownMenuItem(
+                    text={Text(if(options.isEmpty())emptyLabel else "Eşleşen kayıt yok")},
+                    onClick={},
+                    enabled=false
+                )
+            }
+        }
     }
 }
 

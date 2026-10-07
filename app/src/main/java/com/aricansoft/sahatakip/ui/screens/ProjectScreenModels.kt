@@ -34,6 +34,12 @@ internal data class ProjectWorkItemOption(
     val blockCount:Int
 )
 
+internal data class ProjectFilterOption(
+    val key:String,
+    val label:String,
+    val blockCount:Int
+)
+
 internal val trLocale:Locale=Locale.forLanguageTag("tr-TR")
 
 internal fun ProjectQuickStatusRow.asHomeCounts()=HomeStatusCounts(

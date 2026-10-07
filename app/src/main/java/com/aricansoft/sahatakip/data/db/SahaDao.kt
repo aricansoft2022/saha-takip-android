@@ -110,10 +110,24 @@ data class ReportProblemRow(
     val closedAt:Long?
 )
 
+data class ProjectFindingRow(
+    val problemRecordId:String,
+    val blockWorkItemId:String,
+    val blockCode:String,
+    val workItemDefinitionId:String,
+    val workItemName:String,
+    val problemDefinitionId:String,
+    val code:String,
+    val title:String,
+    val kind:com.aricansoft.sahatakip.data.model.FindingKind,
+    val status:com.aricansoft.sahatakip.data.model.ProblemRecordStatus
+)
+
 data class ProjectDeficiencyRow(
     val deficiencyId:String,
     val blockWorkItemId:String,
     val blockCode:String,
+    val workItemDefinitionId:String,
     val workItemName:String,
     val title:String,
     val description:String?,
@@ -373,6 +387,28 @@ interface SahaDao {
     fun observeProblemRecords(blockWorkItemId:String):Flow<List<ProblemRecordRow>>
 
     @Query("""
+        SELECT
+            pr.id AS problemRecordId,
+            pr.blockWorkItemId,
+            b.code AS blockCode,
+            bwi.workItemDefinitionId AS workItemDefinitionId,
+            wid.name AS workItemName,
+            pr.problemDefinitionId,
+            pd.code,
+            pd.title,
+            pd.kind,
+            pr.status
+        FROM problem_records pr
+        JOIN problem_definitions pd ON pd.id=pr.problemDefinitionId
+        JOIN block_work_items bwi ON bwi.id=pr.blockWorkItemId
+        JOIN blocks b ON b.id=bwi.blockId
+        JOIN work_item_definitions wid ON wid.id=bwi.workItemDefinitionId
+        WHERE b.projectId=:projectId
+        ORDER BY CASE pd.kind WHEN 'PROBLEM' THEN 0 ELSE 1 END, pd.code, b.code
+    """)
+    fun observeProjectFindings(projectId:String):Flow<List<ProjectFindingRow>>
+
+    @Query("""
         SELECT * FROM deficiencies
         WHERE blockWorkItemId=:blockWorkItemId
         ORDER BY
@@ -399,6 +435,7 @@ interface SahaDao {
             d.id AS deficiencyId,
             d.blockWorkItemId,
             b.code AS blockCode,
+            bwi.workItemDefinitionId AS workItemDefinitionId,
             wid.name AS workItemName,
             d.title,
             d.description,
