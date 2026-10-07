@@ -33,6 +33,17 @@ import java.util.Locale
 private val relatedDisciplineAdvantageGreen=Color(0xFFE6F4D7)
 private val relatedDisciplineAdvantageGreenContent=Color(0xFF285F16)
 
+private fun workItemTooltipText(
+    name:String,
+    kind:WorkItemKind,
+    tooltip:String?
+):String=tooltip?.trim()?.takeIf{it.isNotBlank()} ?: when(kind){
+    WorkItemKind.RELATED_DISCIPLINE ->
+        name+" elektrik imalatı değildir; elektrik işini etkilediği için takip edilen başka disiplin kalemidir. Bu kalem için özel açıklama tanımlanmamış."
+    WorkItemKind.ELECTRICAL ->
+        name+" elektrik imalatıdır. Bu kalem için özel açıklama tanımlanmamış."
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockScreen(
@@ -153,7 +164,13 @@ fun BlockScreen(
                                         )
                                     }
                                 }
-                                item.tooltip?.let{InfoTooltip(it)}
+                                InfoTooltip(
+                                    workItemTooltipText(
+                                        name=item.name,
+                                        kind=item.kind,
+                                        tooltip=item.tooltip
+                                    )
+                                )
                             }
                             Spacer(Modifier.height(6.dp))
                             Row(
