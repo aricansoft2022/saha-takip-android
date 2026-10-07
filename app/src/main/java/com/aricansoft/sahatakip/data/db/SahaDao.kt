@@ -409,6 +409,16 @@ interface SahaDao {
     fun observeProjectFindings(projectId:String):Flow<List<ProjectFindingRow>>
 
     @Query("""
+        SELECT * FROM deficiency_definitions
+        WHERE projectId=:projectId AND active=1
+        ORDER BY title
+    """)
+    fun observeDeficiencyDefinitions(projectId:String):Flow<List<DeficiencyDefinitionEntity>>
+
+    @Query("SELECT * FROM deficiency_definitions WHERE projectId=:projectId")
+    suspend fun getDeficiencyDefinitionsForProject(projectId:String):List<DeficiencyDefinitionEntity>
+
+    @Query("""
         SELECT * FROM deficiencies
         WHERE blockWorkItemId=:blockWorkItemId
         ORDER BY
@@ -644,11 +654,13 @@ interface SahaDao {
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertBlockTypeWorkItems(items:List<BlockTypeWorkItemEntity>)
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertBlockWorkItems(items:List<BlockWorkItemEntity>)
     @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertProblemDefinitions(items:List<ProblemDefinitionEntity>)
+    @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertDeficiencyDefinitions(items:List<DeficiencyDefinitionEntity>)
     @Insert(onConflict=OnConflictStrategy.IGNORE) suspend fun insertProblemRecords(items:List<ProblemRecordEntity>)
     @Insert(onConflict=OnConflictStrategy.ABORT) suspend fun insertBlockAttributeDefinitions(items:List<BlockAttributeDefinitionEntity>)
     @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun insertBlockAttributeValues(items:List<BlockAttributeValueEntity>)
 
     @Insert suspend fun insertProblemDefinition(item:ProblemDefinitionEntity)
+    @Insert suspend fun insertDeficiencyDefinition(item:DeficiencyDefinitionEntity)
     @Insert suspend fun insertProblemRecord(item:ProblemRecordEntity)
     @Insert suspend fun insertDeficiency(item:DeficiencyEntity)
     @Insert suspend fun insertNote(item:NoteEntity)
