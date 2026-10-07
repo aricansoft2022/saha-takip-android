@@ -1,5 +1,6 @@
 package com.aricansoft.sahatakip.report
 
+import com.aricansoft.sahatakip.data.db.ReportDeficiencyRow
 import com.aricansoft.sahatakip.data.db.ReportNoteRow
 import com.aricansoft.sahatakip.data.db.ReportPhotoRow
 import com.aricansoft.sahatakip.data.db.ReportProblemRow
@@ -11,6 +12,7 @@ data class ProjectReportSnapshot(
     val generatedAt:Long,
     val workItems:List<ReportWorkItemRow>,
     val problems:List<ReportProblemRow>,
+    val deficiencies:List<ReportDeficiencyRow>,
     val notes:List<ReportNoteRow>,
     val photos:List<ReportPhotoRow>
 )
