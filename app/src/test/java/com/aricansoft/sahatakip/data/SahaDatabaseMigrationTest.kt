@@ -90,6 +90,69 @@ class SahaDatabaseMigrationTest {
         }
     }
 
+    @Test
+    fun migration6To7CreatesDeficiencyDefinitionCatalog(){
+        val context=ApplicationProvider.getApplicationContext<Context>()
+        val dbName="migration-6-7-"+UUID.randomUUID()+".db"
+        var helper:SupportSQLiteOpenHelper?=null
+        try{
+            helper=FrameworkSQLiteOpenHelperFactory().create(
+                SupportSQLiteOpenHelper.Configuration.builder(context)
+                    .name(dbName)
+                    .callback(object:SupportSQLiteOpenHelper.Callback(6){
+                        override fun onCreate(db:SupportSQLiteDatabase){
+                            db.execSQL(
+                                "CREATE TABLE projects(id TEXT NOT NULL PRIMARY KEY,name TEXT NOT NULL,createdAt INTEGER NOT NULL)"
+                            )
+                            db.execSQL("INSERT INTO projects VALUES('p1','Test Projesi',1)")
+                        }
+
+                        override fun onUpgrade(
+                            db:SupportSQLiteDatabase,
+                            oldVersion:Int,
+                            newVersion:Int
+                        )=Unit
+                    })
+                    .build()
+            )
+
+            val db=helper.writableDatabase
+            db.setForeignKeyConstraintsEnabled(true)
+            SahaDatabase.MIGRATION_6_7.migrate(db)
+
+            db.execSQL(
+                """
+                INSERT INTO deficiency_definitions(id,projectId,title,description,active)
+                VALUES('dd1','p1','Kablo etiketi eksik','Etiket tamamlanacak',1)
+                """.trimIndent()
+            )
+            assertEquals(
+                "Kablo etiketi eksik",
+                scalarString(db,"SELECT title FROM deficiency_definitions WHERE id='dd1'")
+            )
+
+            assertThrows(Exception::class.java){
+                db.execSQL(
+                    """
+                    INSERT INTO deficiency_definitions(id,projectId,title,description,active)
+                    VALUES('dd2','p1','Kablo etiketi eksik',NULL,1)
+                    """.trimIndent()
+                )
+            }
+            assertThrows(Exception::class.java){
+                db.execSQL(
+                    """
+                    INSERT INTO deficiency_definitions(id,projectId,title,description,active)
+                    VALUES('dd3','missing','Yetim tanım',NULL,1)
+                    """.trimIndent()
+                )
+            }
+        }finally{
+            helper?.close()
+            context.deleteDatabase(dbName)
+        }
+    }
+
     private fun scalarString(db:SupportSQLiteDatabase,sql:String):String=
         db.query(sql).use{cursor->
             check(cursor.moveToFirst()){"Beklenen satır bulunamadı: $sql"}
