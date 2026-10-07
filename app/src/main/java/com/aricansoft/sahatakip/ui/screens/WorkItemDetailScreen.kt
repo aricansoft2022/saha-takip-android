@@ -407,7 +407,6 @@ fun WorkItemDetailScreen(
                             floor=floor,
                             unitNumber=unitNumber,
                             unitName=unitName,
-                            responsible=responsible,
                             targetDate=targetDate,
                             priority=priority,
                             includeInReport=include
