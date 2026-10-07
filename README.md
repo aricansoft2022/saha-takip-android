@@ -29,6 +29,9 @@
 - Başka disiplin kalemlerini listenin sonunda ayrı renkle gösterme
 - Problem + avantaj türünde tekrar kullanılabilir bulgu kataloğu
 - Açık problem ve açık avantajın bağımsız yaşam döngüsü
+- İmalat eksik takip yönetimi: Açık → Gideriliyor → Giderildi → Kontrol edildi
+- Eksiklerde kat/mahal/birim, sorumlu, hedef tarih, öncelik ve sınırsız kanıt fotoğrafı
+- Proje seviyesinde toplu eksik yönetim ekranı
 - Duplicate bulgu kodu koruması
 - Tarihçeli notlar
 - Bağlama otomatik bağlı genel fotoğraf çekimi
@@ -59,8 +62,8 @@ Kamera doğrudan bir imalat detay ekranından açılır. Bu nedenle fotoğraf ç
 
 ## Raporlar
 
-**PDF:** durumlar + rapora seçilmiş problem/not/fotoğraf kanıtları.  
-**XLSX:** İmalat Matrisi, Problemler, Avantajlar, Notlar ve Fotoğraflar sayfaları.
+**PDF:** durumlar + rapora seçilmiş problem/avantaj/eksik/not/fotoğraf kanıtları.  
+**XLSX:** İmalat Matrisi, Problemler, Avantajlar, Eksikler, Notlar ve Fotoğraflar sayfaları.
 
 ## GKTE proje dosyası
 
