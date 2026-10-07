@@ -132,6 +132,9 @@ class SitePackManager(
             }
             val tables=root.getJSONObject("tables")
             normalizeKindsForImport(tables)
+            if(!tables.has("deficiencies")){
+                tables.put("deficiencies",JSONArray())
+            }
 
             val oldProject=singleId(tables,"projects")
             val newProject="project-"+UUID.randomUUID()
@@ -143,6 +146,7 @@ class SitePackManager(
                 blockWorkItems=newIdMap(tables,"block_work_items","bwi"),
                 problemDefinitions=newIdMap(tables,"problem_definitions","pd"),
                 problemRecords=newIdMap(tables,"problem_records","pr"),
+                deficiencies=newIdMap(tables,"deficiencies","def"),
                 notes=newIdMap(tables,"notes","note"),
                 photos=newIdMap(tables,"photos","photo"),
                 attributes=newIdMap(tables,"block_attribute_definitions","bad"),
@@ -186,6 +190,12 @@ class SitePackManager(
                 JOIN blocks b ON b.id=bwi.blockId
                 WHERE b.projectId=?
             """.trimIndent(),
+            "deficiencies" to """
+                SELECT d.* FROM deficiencies d
+                JOIN block_work_items bwi ON bwi.id=d.blockWorkItemId
+                JOIN blocks b ON b.id=bwi.blockId
+                WHERE b.projectId=?
+            """.trimIndent(),
             "notes" to """
                 SELECT n.* FROM notes n
                 JOIN block_work_items bwi ON bwi.id=n.blockWorkItemId
@@ -220,7 +230,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",4)
+            .put("databaseVersion",5)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
@@ -394,12 +404,16 @@ class SitePackManager(
         replaceIds(tables.getJSONArray("problem_records"),"blockWorkItemId",m.blockWorkItems)
         replaceIds(tables.getJSONArray("problem_records"),"problemDefinitionId",m.problemDefinitions)
 
+        replaceIds(tables.getJSONArray("deficiencies"),"id",m.deficiencies)
+        replaceIds(tables.getJSONArray("deficiencies"),"blockWorkItemId",m.blockWorkItems)
+
         replaceIds(tables.getJSONArray("notes"),"id",m.notes)
         replaceIds(tables.getJSONArray("notes"),"blockWorkItemId",m.blockWorkItems)
 
         replaceIds(tables.getJSONArray("photos"),"id",m.photos)
         replaceIds(tables.getJSONArray("photos"),"blockWorkItemId",m.blockWorkItems)
         replaceIds(tables.getJSONArray("photos"),"problemRecordId",m.problemRecords)
+        replaceIds(tables.getJSONArray("photos"),"deficiencyId",m.deficiencies)
 
         replaceIds(tables.getJSONArray("block_attribute_definitions"),"id",m.attributes)
         replaceIds(tables.getJSONArray("block_attribute_definitions"),"projectId",m.projects)
@@ -467,6 +481,7 @@ class SitePackManager(
             "block_work_items",
             "problem_definitions",
             "problem_records",
+            "deficiencies",
             "notes",
             "photos",
             "block_attribute_definitions",
@@ -515,6 +530,7 @@ class SitePackManager(
         val blockWorkItems:Map<String,String>,
         val problemDefinitions:Map<String,String>,
         val problemRecords:Map<String,String>,
+        val deficiencies:Map<String,String>,
         val notes:Map<String,String>,
         val photos:Map<String,String>,
         val attributes:Map<String,String>,
