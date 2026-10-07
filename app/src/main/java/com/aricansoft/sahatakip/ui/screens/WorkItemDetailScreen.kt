@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ReportProblem
@@ -304,7 +305,11 @@ fun WorkItemDetailScreen(
                     }
                 }
             }
-            Button(onClick={showNote=true}){Text("Not ekle")}
+            Button(onClick={showNote=true}){
+                Icon(Icons.Outlined.Add,contentDescription=null)
+                Spacer(Modifier.width(8.dp))
+                Text("Not ekle")
+            }
 
             HorizontalDivider()
             Row(
