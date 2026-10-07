@@ -121,11 +121,10 @@ Her fotoğrafın bağımsız “Rapora dahil” bayrağı vardır. PDF'de bulguy
 Blok tipi, imalat, problem ve blok parametresi tanımlarında kısa açıklama/tooltip alanı bulunur.
 Mobil yüzeyde bilgi ikonuyla açılır.
 
-## Anasayfa hızlı filtreler
-Anasayfada iki filtre birlikte kullanılabilir:
+## Anasayfa hızlı durum filtresi
+Anasayfa proje seçim yüzeyidir. Burada **imalat seçimi yapılmaz**.
 
-1. **İmalat filtresi** — Tüm imalatlar veya belirli bir imalat (örn. Daire Pano).
-2. **Durum filtresi** — aşağıdaki canlı durum agregasyonları:
+Proje kartları aşağıdaki proje-geneli canlı durum agregasyonlarıyla filtrelenebilir:
 
 - Tümü
 - Açık problem
@@ -136,11 +135,20 @@ Anasayfada iki filtre birlikte kullanılabilir:
 - Devam
 - Bitti
 
-İmalat filtresi seçiliyse durum filtresi yalnız o imalatın kayıtlarına uygulanır. Örneğin `Daire Pano + Açık problem`, başka bir imalatta problem bulunduğu için projeyi yanlışlıkla göstermez.
+Her proje kartındaki kısa özet proje içindeki gerçek saha kayıtlarından hesaplanır.
 
-İmalat seçimi aranabilir ve Türkçe büyük/küçük harf duyarsızdır. Her seçenek kaç projede bulunduğunu gösterir.
+## Proje içi imalat filtresi
+İmalat filtresi yalnız proje açıldıktan sonra **Bloklar** ekranında bulunur.
 
-Her proje kartındaki kısa durum özeti de seçilen imalata göre yeniden hesaplanır. Filtreler proje adından veya statik etiketten değil, proje içindeki gerçek saha kayıtlarından hesaplanır.
+- Tüm imalatlar veya belirli bir imalat seçilebilir.
+- Dropdown aranabilir ve Türkçe büyük/küçük harf duyarsızdır.
+- Her imalat kaç blokta bulunduğunu gösterir.
+- Belirli imalat seçilince yalnız o imalatın bulunduğu bloklar listelenir.
+- Seçili imalat için Tümü / Açık problem / Açık eksik / Açık avantaj / Kusurlu / Bloke / Devam / Bitti durum filtreleri birlikte çalışır.
+- Örneğin `Daire Pano + Açık eksik`, yalnız Daire Pano imalatında aktif eksik bulunan blokları gösterir.
+- Filtreli blok kartı seçili imalatın durum özetini gösterir.
+- Belirli imalat seçiliyken blok kartına dokunmak doğrudan o bloktaki seçili imalat detayını açar.
+- `Tüm imalatlar` seçildiğinde normal blok listesine dönülür.
 
 ## İmalat matrisi
 Matris özet ve drill-down ekranıdır.
