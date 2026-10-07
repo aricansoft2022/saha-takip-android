@@ -359,7 +359,6 @@ class SahaRepository(private val dao:SahaDao){
         floor:String?=null,
         unitNumber:String?=null,
         unitName:String?=null,
-        responsible:String?=null,
         targetDate:String?=null,
         priority:DeficiencyPriority=DeficiencyPriority.NORMAL,
         includeInReport:Boolean=true
@@ -376,7 +375,6 @@ class SahaRepository(private val dao:SahaDao){
             floor=floor?.trim()?.ifBlank{null},
             unitNumber=unitNumber?.trim()?.ifBlank{null},
             unitName=unitName?.trim()?.ifBlank{null},
-            responsible=responsible?.trim()?.ifBlank{null},
             targetDate=cleanTarget,
             priority=priority,
             status=DeficiencyStatus.OPEN,
@@ -413,7 +411,6 @@ class SahaRepository(private val dao:SahaDao){
                 floor=floor?.trim()?.ifBlank{null},
                 unitNumber=unitNumber?.trim()?.ifBlank{null},
                 unitName=unitName?.trim()?.ifBlank{null},
-                responsible=responsible?.trim()?.ifBlank{null},
                 targetDate=cleanTarget,
                 priority=priority,
                 includeInReport=includeInReport,
