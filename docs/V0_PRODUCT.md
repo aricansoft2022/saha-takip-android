@@ -5,7 +5,7 @@
 
 Ana saha akışı:
 
-**Proje → Blok tipi → Blok → İmalat → Durum / Problem / Not / Fotoğraf**
+**Proje → Blok tipi → Blok → İmalat → Durum / Problem / Avantaj / Eksik / Not / Fotoğraf**
 
 Excel matrisi ana veri giriş yüzeyi değildir. Özet, filtreleme ve drill-down yüzeyidir.
 
@@ -72,6 +72,32 @@ Elektrik işi olmayan fakat elektrik işinin yapılabilirliğini, maliyetini vey
 - Açık problem ve açık avantaj aynı kalem üzerinde bağımsız kayıtlar olarak bulunabilir.
 - Matris üzerinde `P` açık problemi, `A` açık avantajı gösterir.
 
+## İmalat eksik takip yönetimi
+Eksik, problem/avantajdan ve imalatın ilerleme/kalite/kontrol eksenlerinden ayrı bir yönetim kaydıdır.
+
+Her eksik şu alanları taşıyabilir:
+- Eksik / yapılacak iş başlığı
+- Açıklama
+- Kat
+- Mahal / daire / birim numarası
+- Mahal / daire / birim adı
+- Sorumlu kişi / ekip
+- Hedef tarih
+- Öncelik: Normal / Yüksek / Kritik
+- Rapora dahil bayrağı
+- Sınırsız kanıt fotoğrafı
+
+Yaşam döngüsü:
+**Açık → Gideriliyor → Giderildi → Kontrol edildi**
+
+`Giderildi` nihai kapanış değildir. Eksik ancak `Kontrol edildi` olduğunda aktif eksik listesinden düşer. Durum gerektiğinde geri alınabilir.
+
+Eksikler iki yüzeyden yönetilir:
+1. İmalat detayında o imalata ait eksikler.
+2. Proje seviyesindeki **İmalat Eksik Takibi** ekranında tüm blok/imalat eksikleri; durum ve metin aramasıyla.
+
+Anasayfada `Açık eksik` hızlı filtresi vardır. Matris hücresinde aktif eksik `E` / `E<n>` ile gösterilir.
+
 ## Notlar
 Tarih/saat otomatik metadata olarak saklanır. Her notun rapora dahil bayrağı vardır.
 Eski notun üstüne yazmak yerine yeni tarihçeli not eklemek varsayılandır.
@@ -81,6 +107,7 @@ Fotoğraflar iki seviyede tutulur:
 
 1. **Genel imalat fotoğrafı** — aktif `blockWorkItemId` ile bağlanır.
 2. **Problem/avantaj kanıt fotoğrafı** — hem aktif `blockWorkItemId` hem de ilgili `problemRecordId` ile bağlanır.
+3. **Eksik kanıt fotoğrafı** — hem aktif `blockWorkItemId` hem de ilgili `deficiencyId` ile bağlanır.
 
 Her problem ve her avantaj kaydına **sınırsız sayıda kanıt fotoğrafı** eklenebilir. Problem/avantaj kapatılmış olsa bile mevcut kanıt fotoğrafları korunur ve yeni kanıt eklenebilir.
 
@@ -100,6 +127,7 @@ Anasayfada iki filtre birlikte kullanılabilir:
 
 - Tümü
 - Açık problem
+- Açık eksik
 - Açık avantaj
 - Kusurlu
 - Bloke
@@ -118,9 +146,9 @@ Matris özet ve drill-down ekranıdır.
 - Satır: imalat
 - Sütun: blok
 - İlerleme sembolü
-- Kusur / bloke / açık problem işaretleri
+- Kusur / bloke / açık problem / aktif eksik işaretleri
 - Blok tipi filtresi
-- Açık problem / açık avantaj / başka disiplin / kusurlu / bloke / devam / bitti filtreleri
+- Açık problem / açık eksik / açık avantaj / başka disiplin / kusurlu / bloke / devam / bitti filtreleri
 - Hücreden doğrudan imalat detayına geçiş
 
 ## Raporlar
@@ -135,6 +163,7 @@ Matris özet ve drill-down ekranıdır.
 - İmalat Matrisi
 - Problemler
 - Avantajlar
+- Eksikler
 - Notlar
 - Fotoğraflar
 
