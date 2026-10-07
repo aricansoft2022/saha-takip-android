@@ -6,8 +6,8 @@
 
     <application
         android:name=".SahaTakipApplication"
-        android:allowBackup="true"
-        android:label="Saha Takip"
+        android:allowBackup="false"
+        android:fullBackupContent="false"\n        android:label="Saha Takip"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity

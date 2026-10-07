@@ -13,27 +13,44 @@ import androidx.compose.runtime.setValue
 import com.aricansoft.sahatakip.ui.SahaApp
 
 class MainActivity:ComponentActivity(){
+    companion object {
+        private const val STATE_CONSUMED_GKTE_URI="consumed_gkte_uri"
+    }
+
     private var incomingGkteUri by mutableStateOf<Uri?>(null)
+    private var consumedGkteUri:String?=null
 
     override fun onCreate(savedInstanceState:Bundle?){
         super.onCreate(savedInstanceState)
+        consumedGkteUri=savedInstanceState?.getString(STATE_CONSUMED_GKTE_URI)
         incomingGkteUri=intent.gkteUriOrNull()
+            ?.takeUnless{it.toString()==consumedGkteUri}
 
         setContent{
             MaterialTheme{
                 Surface(color=MaterialTheme.colorScheme.background){
                     SahaApp(
                         externalGkteUri=incomingGkteUri,
-                        onExternalGkteConsumed={incomingGkteUri=null}
+                        onExternalGkteConsumed={
+                            incomingGkteUri?.let{uri->consumedGkteUri=uri.toString()}
+                            incomingGkteUri=null
+                            setIntent(Intent(Intent.ACTION_MAIN))
+                        }
                     )
                 }
             }
         }
     }
 
+    override fun onSaveInstanceState(outState:Bundle){
+        consumedGkteUri?.let{outState.putString(STATE_CONSUMED_GKTE_URI,it)}
+        super.onSaveInstanceState(outState)
+    }
+
     override fun onNewIntent(intent:Intent){
         super.onNewIntent(intent)
         setIntent(intent)
+        consumedGkteUri=null
         incomingGkteUri=intent.gkteUriOrNull()
     }
 

@@ -43,7 +43,9 @@ Required v1 fields:
   "mimeType": "application/vnd.aricansoft.gkte",
   "encoding": "UTF-8",
   "payload": "data.json",
+  "payloadSha256": "<sha256>",
   "assetsRoot": "photos/",
+  "assets": [{"path":"photos/<photo-id>.jpg","size":12345,"sha256":"<sha256>"}],
   "project": {
     "id": "source-project-id",
     "name": "Project name"
@@ -58,7 +60,7 @@ Required v1 fields:
 
 Readers must reject an unsupported `formatVersion` rather than silently guessing.
 
-Readers may ignore unknown manifest fields so compatible metadata can be added later.
+Readers may ignore unknown manifest fields so compatible metadata can be added later. New Android exports include SHA-256 and byte-size metadata for the payload and every photo asset; readers that receive these fields must validate them before importing.
 
 ## data.json
 
@@ -179,3 +181,12 @@ The future Windows desktop application must:
 - export files that conform to this same contract.
 
 The Android and Windows applications may have different internal databases. GKTE is the interoperability boundary between them.
+
+
+## Integrity and resource limits
+
+New Android exports are fail-fast: a project is not reported as successfully exported when any referenced photo cannot be read.
+
+Android import rejects path traversal, duplicate archive entries, more than 5,000 ZIP entries, any single expanded entry over 100 MiB, or total expanded content over 2 GiB. New packages also validate `payloadSha256` and every declared asset hash/size before database insertion.
+
+Legacy packages that predate integrity metadata remain readable, but new exports always include the integrity metadata.

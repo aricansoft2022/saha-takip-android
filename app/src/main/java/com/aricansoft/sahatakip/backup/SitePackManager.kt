@@ -16,6 +16,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -32,6 +33,10 @@ class SitePackManager(
         const val GKTE_MIME="application/vnd.aricansoft.gkte"
         const val GKTE_FORMAT="GKTE"
         const val GKTE_FORMAT_VERSION=1
+        private const val MAX_ARCHIVE_ENTRIES=5_000
+        private const val MAX_ENTRY_BYTES=100L*1024L*1024L
+        private const val MAX_TOTAL_UNCOMPRESSED_BYTES=2L*1024L*1024L*1024L
+        private const val MAX_RETAINED_EXPORTS=5
     }
     suspend fun exportGkte(projectId:String):Uri{
         val root=dumpProject(projectId)
@@ -39,67 +44,110 @@ class SitePackManager(
         val project=projectMeta.getString("projectName")
         val photos=root.getJSONObject("tables").getJSONArray("photos")
 
-        // Android content:// URI'leri platforma özeldir. GKTE içinde fotoğraf
-        // dosyası photos/<photoId>.jpg ile taşınır; okuyucu kendi yerel URI/path'ini üretir.
-        val photoSources=mutableMapOf<String,String>()
+        val photoSources=linkedMapOf<String,String>()
         for(i in 0 until photos.length()){
             val row=photos.getJSONObject(i)
             val id=row.getString("id")
             val localUri=row.optString("localUri")
-            if(localUri.isNotBlank()) photoSources[id]=localUri
+            require(localUri.isNotBlank()){
+                "Fotoğraf kaydı dosya bağı içermiyor: $id. GKTE eksik kanıtla oluşturulmadı."
+            }
+            photoSources[id]=localUri
             row.put("localUri","")
         }
 
-        val manifest=JSONObject()
-            .put("format",GKTE_FORMAT)
-            .put("formatVersion",GKTE_FORMAT_VERSION)
-            .put("minReaderVersion",1)
-            .put("databaseVersion",root.optInt("databaseVersion"))
-            .put("fileExtension",".gkte")
-            .put("mimeType",GKTE_MIME)
-            .put("encoding","UTF-8")
-            .put("payload","data.json")
-            .put("assetsRoot","photos/")
-            .put("project",JSONObject()
-                .put("id",projectMeta.getString("projectId"))
-                .put("name",project)
-            )
-            .put("exportedAt",projectMeta.getLong("exportedAt"))
-            .put("producer",JSONObject()
-                .put("application","Saha Takip")
-                .put("platform","android")
-            )
-
+        val staging=File(context.cacheDir,"gkte-export-"+UUID.randomUUID()).apply{mkdirs()}
         val dir=File(context.filesDir,"backups").apply{mkdirs()}
         val stamp=DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
             .format(Instant.now().atZone(ZoneId.systemDefault()))
         val output=File(dir,safe(project)+"_"+stamp+".gkte")
 
-        ZipOutputStream(FileOutputStream(output).buffered()).use{zip->
-            zip.putNextEntry(ZipEntry("manifest.json"))
-            zip.write(manifest.toString(2).toByteArray(Charsets.UTF_8))
-            zip.closeEntry()
-
-            zip.putNextEntry(ZipEntry("data.json"))
-            zip.write(root.toString().toByteArray(Charsets.UTF_8))
-            zip.closeEntry()
-
-            photoSources.forEach{entry->
-                runCatching{
-                    context.contentResolver.openInputStream(Uri.parse(entry.value))?.use{input->
-                        zip.putNextEntry(ZipEntry("photos/"+entry.key+".jpg"))
-                        input.copyTo(zip)
-                        zip.closeEntry()
+        try{
+            val assets=JSONArray()
+            photoSources.forEach{(id,uriString)->
+                val target=File(staging,id+".jpg")
+                val digest=MessageDigest.getInstance("SHA-256")
+                var size=0L
+                val input=context.contentResolver.openInputStream(Uri.parse(uriString))
+                    ?: error("Fotoğraf okunamadı: $id")
+                input.use{source->
+                    FileOutputStream(target).buffered().use{out->
+                        val buffer=ByteArray(DEFAULT_BUFFER_SIZE)
+                        while(true){
+                            val read=source.read(buffer)
+                            if(read<0) break
+                            size+=read
+                            require(size<=MAX_ENTRY_BYTES){
+                                "Fotoğraf GKTE sınırını aşıyor: $id"
+                            }
+                            digest.update(buffer,0,read)
+                            out.write(buffer,0,read)
+                        }
                     }
                 }
+                require(size>0){"Fotoğraf dosyası boş: $id"}
+                assets.put(
+                    JSONObject()
+                        .put("path","photos/$id.jpg")
+                        .put("size",size)
+                        .put("sha256",digest.digest().toHex())
+                )
             }
-        }
 
-        return FileProvider.getUriForFile(
-            context,
-            BuildConfig.APPLICATION_ID+".fileprovider",
-            output
-        )
+            val dataBytes=root.toString().toByteArray(Charsets.UTF_8)
+            val manifest=JSONObject()
+                .put("format",GKTE_FORMAT)
+                .put("formatVersion",GKTE_FORMAT_VERSION)
+                .put("minReaderVersion",1)
+                .put("databaseVersion",root.optInt("databaseVersion"))
+                .put("fileExtension",".gkte")
+                .put("mimeType",GKTE_MIME)
+                .put("encoding","UTF-8")
+                .put("payload","data.json")
+                .put("payloadSha256",sha256(dataBytes))
+                .put("assetsRoot","photos/")
+                .put("assets",assets)
+                .put("project",JSONObject()
+                    .put("id",projectMeta.getString("projectId"))
+                    .put("name",project)
+                )
+                .put("exportedAt",projectMeta.getLong("exportedAt"))
+                .put("producer",JSONObject()
+                    .put("application","Saha Takip")
+                    .put("platform","android")
+                )
+
+            ZipOutputStream(FileOutputStream(output).buffered()).use{zip->
+                zip.putNextEntry(ZipEntry("manifest.json"))
+                zip.write(manifest.toString(2).toByteArray(Charsets.UTF_8))
+                zip.closeEntry()
+
+                zip.putNextEntry(ZipEntry("data.json"))
+                zip.write(dataBytes)
+                zip.closeEntry()
+
+                for(i in 0 until assets.length()){
+                    val asset=assets.getJSONObject(i)
+                    val path=asset.getString("path")
+                    val id=path.substringAfter("photos/").substringBeforeLast(".jpg")
+                    zip.putNextEntry(ZipEntry(path))
+                    File(staging,id+".jpg").inputStream().buffered().use{it.copyTo(zip)}
+                    zip.closeEntry()
+                }
+            }
+
+            pruneFiles(dir,".gkte",MAX_RETAINED_EXPORTS)
+            return FileProvider.getUriForFile(
+                context,
+                BuildConfig.APPLICATION_ID+".fileprovider",
+                output
+            )
+        }catch(error:Throwable){
+            output.delete()
+            throw error
+        }finally{
+            staging.deleteRecursively()
+        }
     }
 
     @Deprecated("Use exportGkte")
@@ -111,7 +159,8 @@ class SitePackManager(
             extract(packageUri,tempRoot)
 
             val manifestFile=File(tempRoot,"manifest.json")
-            if(manifestFile.isFile){
+            val strictPackage=manifestFile.isFile
+            if(strictPackage){
                 val manifest=JSONObject(manifestFile.readText(Charsets.UTF_8))
                 require(manifest.optString("format")==GKTE_FORMAT){
                     "Bu dosya GKTE proje paketi değil."
@@ -122,6 +171,7 @@ class SitePackManager(
                 require(manifest.optString("payload","data.json")=="data.json"){
                     "GKTE payload tanımı desteklenmiyor."
                 }
+                validateManifestIntegrity(manifest,tempRoot)
             }
 
             val dataFile=File(tempRoot,"data.json")
@@ -132,6 +182,7 @@ class SitePackManager(
             }
             val tables=root.getJSONObject("tables")
             normalizeKindsForImport(tables)
+            validateImportGraph(tables,strictPackage)
             if(!tables.has("deficiencies")){
                 tables.put("deficiencies",JSONArray())
             }
@@ -154,8 +205,13 @@ class SitePackManager(
             )
 
             remap(tables,maps)
-            restorePhotos(tempRoot,tables,maps.photos,newProject)
-            insertTables(tables)
+            val restoredDir=restorePhotos(tempRoot,tables,maps.photos,newProject,strictPackage)
+            try{
+                insertTables(tables)
+            }catch(error:Throwable){
+                restoredDir.deleteRecursively()
+                throw error
+            }
             database.invalidationTracker.refreshAsync()
             return newProject
         }finally{
@@ -230,7 +286,7 @@ class SitePackManager(
 
         JSONObject()
             .put("formatVersion",1)
-            .put("databaseVersion",5)
+            .put("databaseVersion",6)
             .put("meta",JSONObject()
                 .put("projectId",project.id)
                 .put("projectName",project.name)
@@ -263,23 +319,164 @@ class SitePackManager(
 
     private fun extract(uri:Uri,target:File){
         val rootPath=target.canonicalPath+File.separator
+        val seen=mutableSetOf<String>()
+        var entryCount=0
+        var totalBytes=0L
         context.contentResolver.openInputStream(uri)?.use{raw->
             ZipInputStream(raw.buffered()).use{zip->
                 var entry=zip.nextEntry
                 while(entry!=null){
+                    entryCount++
+                    require(entryCount<=MAX_ARCHIVE_ENTRIES){"GKTE çok fazla arşiv girdisi içeriyor."}
+                    require(entry.name.isNotBlank() && seen.add(entry.name)){"Geçersiz veya yinelenen arşiv girdisi."}
                     val out=File(target,entry.name).canonicalFile
                     require(out.path.startsWith(rootPath)){"Geçersiz arşiv yolu."}
                     if(entry.isDirectory){
                         out.mkdirs()
                     }else{
                         out.parentFile?.mkdirs()
-                        FileOutputStream(out).use{zip.copyTo(it)}
+                        var entryBytes=0L
+                        FileOutputStream(out).buffered().use{output->
+                            val buffer=ByteArray(DEFAULT_BUFFER_SIZE)
+                            while(true){
+                                val read=zip.read(buffer)
+                                if(read<0) break
+                                entryBytes+=read
+                                totalBytes+=read
+                                require(entryBytes<=MAX_ENTRY_BYTES){"GKTE içindeki tek dosya boyut sınırını aşıyor."}
+                                require(totalBytes<=MAX_TOTAL_UNCOMPRESSED_BYTES){"GKTE açılmış toplam boyut sınırını aşıyor."}
+                                output.write(buffer,0,read)
+                            }
+                        }
                     }
                     zip.closeEntry()
                     entry=zip.nextEntry
                 }
             }
         } ?: error("Yedek dosyası açılamadı.")
+    }
+
+    private fun validateManifestIntegrity(manifest:JSONObject,tempRoot:File){
+        val data=File(tempRoot,"data.json")
+        require(data.isFile){"GKTE payload dosyası bulunamadı."}
+        manifest.optString("payloadSha256").takeIf{it.isNotBlank()}?.let{expected->
+            require(sha256(data.readBytes()).equals(expected,ignoreCase=true)){
+                "GKTE data.json bütünlük doğrulaması başarısız."
+            }
+        }
+
+        val assets=manifest.optJSONArray("assets") ?: return
+        val seen=mutableSetOf<String>()
+        for(i in 0 until assets.length()){
+            val asset=assets.getJSONObject(i)
+            val path=asset.getString("path")
+            require(path.startsWith("photos/") && path.endsWith(".jpg") && seen.add(path)){
+                "GKTE asset tanımı geçersiz."
+            }
+            val file=File(tempRoot,path).canonicalFile
+            require(file.path.startsWith(tempRoot.canonicalPath+File.separator) && file.isFile){
+                "GKTE asset dosyası eksik: $path"
+            }
+            val expectedSize=asset.getLong("size")
+            require(file.length()==expectedSize){"GKTE asset boyutu uyuşmuyor: $path"}
+            require(sha256(file.readBytes()).equals(asset.getString("sha256"),ignoreCase=true)){
+                "GKTE asset bütünlük doğrulaması başarısız: $path"
+            }
+        }
+    }
+
+    private fun validateImportGraph(tables:JSONObject,strictAssets:Boolean){
+        val required=listOf(
+            "projects","block_types","blocks","work_item_definitions","block_type_work_items",
+            "block_work_items","problem_definitions","problem_records","deficiencies","notes",
+            "photos","block_attribute_definitions","block_attribute_values","audit_events"
+        )
+        required.forEach{require(tables.has(it)){"GKTE tablosu eksik: $it"}}
+
+        fun ids(table:String):Set<String>{
+            val array=tables.getJSONArray(table)
+            val result=linkedSetOf<String>()
+            for(i in 0 until array.length()){
+                val id=array.getJSONObject(i).getString("id")
+                require(result.add(id)){"GKTE içinde yinelenen kimlik: $table / $id"}
+            }
+            return result
+        }
+        val projectIds=ids("projects")
+        require(projectIds.size==1){"GKTE içinde tam bir proje kaydı bekleniyor."}
+        val blockTypeIds=ids("block_types")
+        val blockIds=ids("blocks")
+        val workIds=ids("work_item_definitions")
+        val bwiIds=ids("block_work_items")
+        val problemDefIds=ids("problem_definitions")
+        val problemRecordIds=ids("problem_records")
+        val deficiencyIds=ids("deficiencies")
+        ids("notes")
+        ids("photos")
+        val attributeIds=ids("block_attribute_definitions")
+        ids("audit_events")
+
+        fun requireRef(row:JSONObject,key:String,valid:Set<String>,table:String){
+            require(row.has(key) && !row.isNull(key) && row.getString(key) in valid){
+                "GKTE ilişki hatası: $table.$key"
+            }
+        }
+        forEachRow(tables,"block_types"){requireRef(it,"projectId",projectIds,"block_types")}
+        forEachRow(tables,"blocks"){
+            requireRef(it,"projectId",projectIds,"blocks")
+            requireRef(it,"blockTypeId",blockTypeIds,"blocks")
+        }
+        forEachRow(tables,"work_item_definitions"){requireRef(it,"projectId",projectIds,"work_item_definitions")}
+        forEachRow(tables,"block_type_work_items"){
+            requireRef(it,"blockTypeId",blockTypeIds,"block_type_work_items")
+            requireRef(it,"workItemDefinitionId",workIds,"block_type_work_items")
+        }
+        val bwiOwner=mutableMapOf<String,String>()
+        forEachRow(tables,"block_work_items"){
+            requireRef(it,"blockId",blockIds,"block_work_items")
+            requireRef(it,"workItemDefinitionId",workIds,"block_work_items")
+            bwiOwner[it.getString("id")]=it.getString("blockId")
+        }
+        forEachRow(tables,"problem_definitions"){requireRef(it,"projectId",projectIds,"problem_definitions")}
+        val problemOwner=mutableMapOf<String,String>()
+        forEachRow(tables,"problem_records"){
+            requireRef(it,"blockWorkItemId",bwiIds,"problem_records")
+            requireRef(it,"problemDefinitionId",problemDefIds,"problem_records")
+            problemOwner[it.getString("id")]=it.getString("blockWorkItemId")
+        }
+        val deficiencyOwner=mutableMapOf<String,String>()
+        forEachRow(tables,"deficiencies"){
+            requireRef(it,"blockWorkItemId",bwiIds,"deficiencies")
+            deficiencyOwner[it.getString("id")]=it.getString("blockWorkItemId")
+        }
+        forEachRow(tables,"notes"){requireRef(it,"blockWorkItemId",bwiIds,"notes")}
+        forEachRow(tables,"block_attribute_definitions"){requireRef(it,"projectId",projectIds,"block_attribute_definitions")}
+        forEachRow(tables,"block_attribute_values"){
+            requireRef(it,"blockId",blockIds,"block_attribute_values")
+            requireRef(it,"attributeDefinitionId",attributeIds,"block_attribute_values")
+        }
+        forEachRow(tables,"audit_events"){requireRef(it,"blockWorkItemId",bwiIds,"audit_events")}
+        forEachRow(tables,"photos"){row->
+            val bwi=row.getString("blockWorkItemId")
+            require(bwi in bwiIds){"GKTE fotoğraf imalat ilişkisi geçersiz."}
+            val problem=row.optString("problemRecordId").takeIf{it.isNotBlank()}
+            val deficiency=row.optString("deficiencyId").takeIf{it.isNotBlank()}
+            require(problem==null || deficiency==null){"GKTE fotoğrafı iki kanıt kaydına birden bağlı."}
+            if(problem!=null){
+                require(problem in problemRecordIds && problemOwner[problem]==bwi){"GKTE fotoğraf problem bağlamı uyuşmuyor."}
+            }
+            if(deficiency!=null){
+                require(deficiency in deficiencyIds && deficiencyOwner[deficiency]==bwi){"GKTE fotoğraf eksik bağlamı uyuşmuyor."}
+            }
+            if(strictAssets){
+                require(row.optString("localUri").isBlank()){"GKTE fotoğraf URI alanı platform bağımsız olmalı."}
+            }
+        }
+    }
+
+    private fun forEachRow(tables:JSONObject,table:String,action:(JSONObject)->Unit){
+        val array=tables.getJSONArray(table)
+        for(i in 0 until array.length()) action(array.getJSONObject(i))
     }
 
     private fun normalizeKindsForImport(tables:JSONObject){
@@ -438,8 +635,9 @@ class SitePackManager(
         tempRoot:File,
         tables:JSONObject,
         photoMap:Map<String,String>,
-        newProjectId:String
-    ){
+        newProjectId:String,
+        strictAssets:Boolean
+    ):File{
         val array=tables.getJSONArray("photos")
         val byNewId=mutableMapOf<String,JSONObject>()
         for(i in 0 until array.length()){
@@ -465,9 +663,11 @@ class SitePackManager(
                 )
                 row.put("localUri",uri.toString())
             }else{
+                require(!strictAssets){"GKTE fotoğraf asset'i eksik: $oldId"}
                 row.put("localUri","")
             }
         }
+        return targetDir
     }
 
     private suspend fun insertTables(tables:JSONObject)=database.withTransaction{
@@ -514,6 +714,19 @@ class SitePackManager(
             }
         }
         return values
+    }
+
+    private fun sha256(bytes:ByteArray):String=
+        MessageDigest.getInstance("SHA-256").digest(bytes).toHex()
+
+    private fun ByteArray.toHex():String=joinToString(""){"%02x".format(it)}
+
+    private fun pruneFiles(dir:File,extension:String,keep:Int){
+        dir.listFiles()
+            ?.filter{it.isFile && it.name.endsWith(extension,ignoreCase=true)}
+            ?.sortedByDescending{it.lastModified()}
+            ?.drop(keep)
+            ?.forEach{it.delete()}
     }
 
     private fun safe(value:String)=value
