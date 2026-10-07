@@ -30,7 +30,7 @@
 - Problem + avantaj türünde tekrar kullanılabilir bulgu kataloğu
 - Açık problem ve açık avantajın bağımsız yaşam döngüsü
 - İmalat eksik takip yönetimi: Açık → Gideriliyor → Giderildi → Kontrol edildi
-- Eksiklerde kat/mahal/birim, sorumlu, hedef tarih, öncelik ve sınırsız kanıt fotoğrafı
+- Eksiklerde kat/mahal/birim, hedef tarih, öncelik ve sınırsız kanıt fotoğrafı
 - Proje seviyesinde toplu eksik yönetim ekranı
 - Duplicate bulgu kodu koruması
 - Tarihçeli notlar
