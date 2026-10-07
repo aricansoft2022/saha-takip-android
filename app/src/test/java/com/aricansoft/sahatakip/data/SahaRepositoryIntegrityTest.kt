@@ -64,26 +64,29 @@ class SahaRepositoryIntegrityTest {
     }
 
     @Test
-    fun foreignKeyRejectsOrphanBlockWorkItem()=runBlocking{
-        assertThrows(Exception::class.java){
-            runBlocking{
-                database.sahaDao().insertBlockWorkItems(
-                    listOf(
-                        BlockWorkItemEntity(
-                            id="bwi-orphan",
-                            blockId="missing-block",
-                            workItemDefinitionId="missing-definition",
-                            createdAt=1L,
-                            updatedAt=1L
+    fun foreignKeyRejectsOrphanBlockWorkItem(){
+        runBlocking{
+            assertThrows(Exception::class.java){
+                runBlocking{
+                    database.sahaDao().insertBlockWorkItems(
+                        listOf(
+                            BlockWorkItemEntity(
+                                id="bwi-orphan",
+                                blockId="missing-block",
+                                workItemDefinitionId="missing-definition",
+                                createdAt=1L,
+                                updatedAt=1L
+                            )
                         )
                     )
-                )
+                }
             }
         }
     }
 
     @Test
-    fun repositoryRejectsPhotoLinkedToFindingFromAnotherWorkItem()=runBlocking{
+    fun repositoryRejectsPhotoLinkedToFindingFromAnotherWorkItem(){
+        runBlocking{
         val project=repository.createProject("Test")
         val type=repository.createBlockType(project.id,"TEST",null,null)
         val block1=repository.createBlock(project.id,type.id,1)
@@ -104,19 +107,21 @@ class SahaRepositoryIntegrityTest {
         )
         val finding=database.sahaDao().observeProblemRecords(bwi1.id).first().single()
 
-        assertThrows(IllegalArgumentException::class.java){
-            runBlocking{
-                repository.addPhoto(
-                    blockWorkItemId=bwi2.id,
-                    uri="content://invalid-but-not-opened/photo.jpg",
-                    problemRecordId=finding.id
-                )
+            assertThrows(IllegalArgumentException::class.java){
+                runBlocking{
+                    repository.addPhoto(
+                        blockWorkItemId=bwi2.id,
+                        uri="content://invalid-but-not-opened/photo.jpg",
+                        problemRecordId=finding.id
+                    )
+                }
             }
         }
     }
 
     @Test
-    fun databaseRejectsPhotoLinkedToFindingAndDeficiencyTogether()=runBlocking{
+    fun databaseRejectsPhotoLinkedToFindingAndDeficiencyTogether(){
+        runBlocking{
         val project=repository.createProject("Test")
         val type=repository.createBlockType(project.id,"TEST",null,null)
         val block=repository.createBlock(project.id,type.id,1)
@@ -135,18 +140,19 @@ class SahaRepositoryIntegrityTest {
         val finding=database.sahaDao().observeProblemRecords(bwi.id).first().single()
         val deficiency=repository.createDeficiency(bwi.id,"Test eksiği")
 
-        assertThrows(Exception::class.java){
-            runBlocking{
-                database.sahaDao().insertPhoto(
-                    PhotoEntity(
-                        id="photo-"+UUID.randomUUID(),
-                        blockWorkItemId=bwi.id,
-                        problemRecordId=finding.id,
-                        deficiencyId=deficiency.id,
-                        localUri="content://invalid-but-not-opened/photo.jpg",
-                        createdAt=System.currentTimeMillis()
+            assertThrows(Exception::class.java){
+                runBlocking{
+                    database.sahaDao().insertPhoto(
+                        PhotoEntity(
+                            id="photo-"+UUID.randomUUID(),
+                            blockWorkItemId=bwi.id,
+                            problemRecordId=finding.id,
+                            deficiencyId=deficiency.id,
+                            localUri="content://invalid-but-not-opened/photo.jpg",
+                            createdAt=System.currentTimeMillis()
+                        )
                     )
-                )
+                }
             }
         }
     }
