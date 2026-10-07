@@ -38,7 +38,7 @@ Required v1 fields:
   "format": "GKTE",
   "formatVersion": 1,
   "minReaderVersion": 1,
-  "databaseVersion": 5,
+  "databaseVersion": 6,
   "fileExtension": ".gkte",
   "mimeType": "application/vnd.aricansoft.gkte",
   "encoding": "UTF-8",
@@ -190,3 +190,10 @@ New Android exports are fail-fast: a project is not reported as successfully exp
 Android import rejects path traversal, duplicate archive entries, more than 5,000 ZIP entries, any single expanded entry over 100 MiB, or total expanded content over 2 GiB. New packages also validate `payloadSha256` and every declared asset hash/size before database insertion.
 
 Legacy packages that predate integrity metadata remain readable, but new exports always include the integrity metadata.
+
+
+## Database version 6
+
+Android database version 6 adds relational foreign-key protection without changing the portable GKTE format version. GKTE remains `formatVersion: 1`; `databaseVersion` is producer metadata, not the cross-platform format version.
+
+A failed Android import is transactional at the database layer. Photo files copied before a database insertion failure are removed, and restored-photo directories that do not correspond to a local project are cleaned on subsequent application startup/import.
