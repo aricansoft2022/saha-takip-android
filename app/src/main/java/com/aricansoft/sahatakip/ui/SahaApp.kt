@@ -11,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import com.aricansoft.sahatakip.SahaTakipApplication
 import com.aricansoft.sahatakip.data.SahaRepository
 import com.aricansoft.sahatakip.ui.screens.BlockScreen
+import com.aricansoft.sahatakip.ui.screens.DeficiencyScreen
 import com.aricansoft.sahatakip.ui.screens.HomeScreen
 import com.aricansoft.sahatakip.ui.screens.MatrixScreen
 import com.aricansoft.sahatakip.ui.screens.ProjectScreen
@@ -62,7 +63,17 @@ fun SahaApp(
                 projectId=projectId,
                 onBack={nav.popBackStack()},
                 onBlock={blockId->nav.navigate("block/"+projectId+"/"+blockId)},
-                onMatrix={nav.navigate("matrix/"+projectId)}
+                onMatrix={nav.navigate("matrix/"+projectId)},
+                onDeficiencies={nav.navigate("deficiencies/"+projectId)}
+            )
+        }
+        composable("deficiencies/{projectId}"){entry->
+            val projectId=requireNotNull(entry.arguments?.getString("projectId"))
+            DeficiencyScreen(
+                repository=repository,
+                projectId=projectId,
+                onBack={nav.popBackStack()},
+                onWorkItem={id->nav.navigate("work/"+id)}
             )
         }
         composable("matrix/{projectId}"){entry->
