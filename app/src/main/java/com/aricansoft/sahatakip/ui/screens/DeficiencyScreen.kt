@@ -70,7 +70,6 @@ fun DeficiencyScreen(
                         row.floor,
                         row.unitNumber,
                         row.unitName,
-                        row.responsible,
                         row.targetDate
                     ).any{it.lowercase(tr).contains(normalized)}
             )
@@ -107,7 +106,7 @@ fun DeficiencyScreen(
                     OutlinedTextField(
                         value=search,
                         onValueChange={search=it},
-                        label={Text("Blok / imalat / mahal / sorumlu ara")},
+                        label={Text("Blok / imalat / mahal ara")},
                         modifier=Modifier.fillMaxWidth(),
                         singleLine=true
                     )
@@ -193,9 +192,6 @@ fun DeficiencyScreen(
                                 }
                                 if(location.isNotEmpty()){
                                     Text(location.joinToString(" · "),style=MaterialTheme.typography.bodySmall)
-                                }
-                                row.responsible?.let{
-                                    Text("Sorumlu: "+it,style=MaterialTheme.typography.bodySmall)
                                 }
                                 row.targetDate?.let{
                                     Text("Hedef: "+it,style=MaterialTheme.typography.bodySmall)
