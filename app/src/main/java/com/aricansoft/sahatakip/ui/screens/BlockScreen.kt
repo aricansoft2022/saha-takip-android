@@ -353,7 +353,7 @@ fun BlockScreen(
 }
 
 @Composable
-private fun FindingDefinitionCatalogDialog(
+internal fun FindingDefinitionCatalogDialog(
     kind:FindingKind,
     definitions:List<ProblemDefinitionEntity>,
     onDismiss:()->Unit,
@@ -421,7 +421,7 @@ private fun FindingDefinitionCatalogDialog(
 }
 
 @Composable
-private fun DeficiencyDefinitionCatalogDialog(
+internal fun DeficiencyDefinitionCatalogDialog(
     definitions:List<DeficiencyDefinitionEntity>,
     onDismiss:()->Unit,
     onCreate:(String,String?)->Unit
