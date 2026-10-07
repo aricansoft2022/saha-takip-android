@@ -83,11 +83,10 @@ Her eksik şu alanları taşıyabilir:
 - Kat
 - Mahal / daire / birim numarası
 - Mahal / daire / birim adı
-- Sorumlu kişi / ekip
 - Hedef tarih
 - Öncelik: Normal / Yüksek / Kritik
 
-Başlık, açıklama, konum, sorumlu, hedef tarih ve öncelik sonradan düzenlenebilir; düzenleme mevcut durum yaşam döngüsünü sıfırlamaz.
+Başlık, açıklama, konum, hedef tarih ve öncelik sonradan düzenlenebilir; düzenleme mevcut durum yaşam döngüsünü sıfırlamaz.
 - Rapora dahil bayrağı
 - Sınırsız kanıt fotoğrafı
 
