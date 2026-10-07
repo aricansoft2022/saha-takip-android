@@ -282,6 +282,7 @@ fun ProjectScreen(
     projectId:String,
     onBack:()->Unit,
     onBlock:(String)->Unit,
+    onWorkItem:(String)->Unit,
     onMatrix:()->Unit,
     onDeficiencies:()->Unit
 ){
@@ -628,7 +629,11 @@ fun ProjectScreen(
                     items(visibleBlocks,key={it.id}){block->
                         val selectedRow=selectedRowsByBlockCode[block.code]
                         Card(
-                            modifier=Modifier.fillMaxWidth().clickable{onBlock(block.id)}
+                            modifier=Modifier.fillMaxWidth().clickable{
+                                val selectedRow=selectedRowsByBlockCode[block.code]
+                                if(selectedRow!=null) onWorkItem(selectedRow.blockWorkItemId)
+                                else onBlock(block.id)
+                            }
                         ){
                             Row(
                                 Modifier.fillMaxWidth().padding(16.dp),
