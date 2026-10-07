@@ -153,7 +153,20 @@ class SitePackManager(
     @Deprecated("Use exportGkte")
     suspend fun exportProject(projectId:String):Uri=exportGkte(projectId)
 
+    suspend fun cleanupOrphanRestores(){
+        val pictureRoot=context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return
+        val restoredRoot=File(pictureRoot,"Restored")
+        restoredRoot.listFiles()
+            ?.filter{it.isDirectory}
+            ?.forEach{dir->
+                if(database.sahaDao().getProject(dir.name)==null){
+                    dir.deleteRecursively()
+                }
+            }
+    }
+
     suspend fun importProject(packageUri:Uri):String{
+        cleanupOrphanRestores()
         val tempRoot=File(context.cacheDir,"gkte-"+UUID.randomUUID()).apply{mkdirs()}
         try{
             extract(packageUri,tempRoot)
