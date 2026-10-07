@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ReportProblem
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aricansoft.sahatakip.data.SahaRepository
+import com.aricansoft.sahatakip.data.db.DeficiencyEntity
 import com.aricansoft.sahatakip.data.db.ProblemDefinitionEntity
 import com.aricansoft.sahatakip.data.db.ProblemRecordRow
 import com.aricansoft.sahatakip.data.model.*
@@ -77,6 +79,8 @@ fun WorkItemDetailScreen(
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val problems=remember(findings){findings.filter{it.kind==FindingKind.PROBLEM}}
     val advantages=remember(findings){findings.filter{it.kind==FindingKind.ADVANTAGE}}
+    val deficiencies by remember(blockWorkItemId){repository.observeDeficiencies(blockWorkItemId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
     val notes by remember(blockWorkItemId){repository.observeNotes(blockWorkItemId)}
         .collectAsStateWithLifecycle(initialValue=emptyList())
     val photos by remember(blockWorkItemId){repository.observePhotos(blockWorkItemId)}
@@ -85,20 +89,24 @@ fun WorkItemDetailScreen(
     var showNote by remember{mutableStateOf(false)}
     var showProblem by remember{mutableStateOf(false)}
     var showAdvantage by remember{mutableStateOf(false)}
+    var showDeficiency by remember{mutableStateOf(false)}
     var pendingPhoto by remember{mutableStateOf<PendingPhoto?>(null)}
     var pendingFindingRecordId by remember{mutableStateOf<String?>(null)}
+    var pendingDeficiencyId by remember{mutableStateOf<String?>(null)}
     var photoInReport by remember{mutableStateOf(true)}
 
     val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){success->
         val pending=pendingPhoto
         val findingRecordId=pendingFindingRecordId
+        val deficiencyId=pendingDeficiencyId
         if(success && pending!=null){
             scope.launch{
                 repository.addPhoto(
                     blockWorkItemId=blockWorkItemId,
                     uri=pending.uri.toString(),
-                    includeInReport=if(findingRecordId==null) photoInReport else true,
-                    problemRecordId=findingRecordId
+                    includeInReport=if(findingRecordId==null && deficiencyId==null) photoInReport else true,
+                    problemRecordId=findingRecordId,
+                    deficiencyId=deficiencyId
                 )
             }
         }else{
@@ -106,6 +114,7 @@ fun WorkItemDetailScreen(
         }
         pendingPhoto=null
         pendingFindingRecordId=null
+        pendingDeficiencyId=null
     }
 
     Scaffold(
@@ -239,6 +248,31 @@ fun WorkItemDetailScreen(
                 onAdd={showAdvantage=true}
             )
 
+            DeficiencySection(
+                repository=repository,
+                records=deficiencies,
+                photoEnabled=photoContext!=null,
+                onTakePhoto={deficiencyId->
+                    photoContext?.let{pc->
+                        val pending=PhotoStore.create(context,pc)
+                        pendingPhoto=pending
+                        pendingFindingRecordId=null
+                        pendingDeficiencyId=deficiencyId
+                        camera.launch(pending.uri)
+                    }
+                },
+                onTogglePhotoReport={id,checked->
+                    scope.launch{repository.setPhotoReportInclusion(id,checked)}
+                },
+                onToggleReport={id,checked->
+                    scope.launch{repository.setDeficiencyReportInclusion(id,checked)}
+                },
+                onStatus={id,status->
+                    scope.launch{repository.setDeficiencyStatus(id,status)}
+                },
+                onAdd={showDeficiency=true}
+            )
+
             HorizontalDivider()
             Text("Notlar",style=MaterialTheme.typography.titleMedium)
             notes.forEach{note->
@@ -273,6 +307,7 @@ fun WorkItemDetailScreen(
                     val pending=PhotoStore.create(context,pc)
                     pendingPhoto=pending
                     pendingFindingRecordId=null
+                    pendingDeficiencyId=null
                     camera.launch(pending.uri)
                 },
                 enabled=photoContext!=null
@@ -303,6 +338,29 @@ fun WorkItemDetailScreen(
             }
             Spacer(Modifier.height(32.dp))
         }
+    }
+
+    if(showDeficiency){
+        DeficiencyDialog(
+            onDismiss={showDeficiency=false},
+            onCreate={title,description,floor,unitNumber,unitName,responsible,targetDate,priority,include->
+                scope.launch{
+                    repository.createDeficiency(
+                        blockWorkItemId=blockWorkItemId,
+                        title=title,
+                        description=description,
+                        floor=floor,
+                        unitNumber=unitNumber,
+                        unitName=unitName,
+                        responsible=responsible,
+                        targetDate=targetDate,
+                        priority=priority,
+                        includeInReport=include
+                    )
+                }
+                showDeficiency=false
+            }
+        )
     }
 
     if(showNote){
@@ -546,6 +604,279 @@ private fun FindingEvidencePhotos(
             )
         }
     }
+}
+
+@Composable
+private fun DeficiencySection(
+    repository:SahaRepository,
+    records:List<DeficiencyEntity>,
+    photoEnabled:Boolean,
+    onTakePhoto:(String)->Unit,
+    onTogglePhotoReport:(String,Boolean)->Unit,
+    onToggleReport:(String,Boolean)->Unit,
+    onStatus:(String,DeficiencyStatus)->Unit,
+    onAdd:()->Unit
+){
+    HorizontalDivider()
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment=Alignment.CenterVertically,
+        horizontalArrangement=Arrangement.SpaceBetween
+    ){
+        Text("İmalat Eksikleri",style=MaterialTheme.typography.titleMedium)
+        Text(
+            records.count{it.status!=DeficiencyStatus.VERIFIED}.toString()+" aktif",
+            style=MaterialTheme.typography.labelMedium,
+            color=MaterialTheme.colorScheme.tertiary
+        )
+    }
+
+    records.forEach{record->
+        OutlinedCard(
+            modifier=Modifier.fillMaxWidth(),
+            colors=CardDefaults.outlinedCardColors(
+                containerColor=if(record.status==DeficiencyStatus.VERIFIED)
+                    MaterialTheme.colorScheme.surface
+                else
+                    MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ){
+            Column(
+                Modifier.padding(12.dp),
+                verticalArrangement=Arrangement.spacedBy(6.dp)
+            ){
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Icon(
+                        Icons.Outlined.Warning,
+                        contentDescription=null,
+                        tint=if(record.priority==DeficiencyPriority.CRITICAL)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(record.title,Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
+                    AssistChip(onClick={},label={Text(record.priority.label)})
+                }
+
+                record.description?.let{Text(it)}
+                val location=buildList{
+                    record.floor?.let{add("Kat: "+it)}
+                    record.unitNumber?.let{add("No: "+it)}
+                    record.unitName?.let{add("Mahal / daire / birim: "+it)}
+                }
+                if(location.isNotEmpty()){
+                    Text(location.joinToString(" · "),style=MaterialTheme.typography.bodySmall)
+                }
+                record.responsible?.let{
+                    Text("Sorumlu: "+it,style=MaterialTheme.typography.bodySmall)
+                }
+                record.targetDate?.let{
+                    Text("Hedef: "+it,style=MaterialTheme.typography.bodySmall)
+                }
+
+                Text("Durum",style=MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                    items(DeficiencyStatus.entries,key={it.name}){status->
+                        FilterChip(
+                            selected=record.status==status,
+                            onClick={onStatus(record.id,status)},
+                            label={Text(status.label)}
+                        )
+                    }
+                }
+
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Checkbox(
+                        checked=record.includeInReport,
+                        onCheckedChange={checked->onToggleReport(record.id,checked)}
+                    )
+                    Text("Rapora dahil")
+                }
+
+                HorizontalDivider(Modifier.padding(vertical=4.dp))
+                DeficiencyEvidencePhotos(
+                    repository=repository,
+                    deficiencyId=record.id,
+                    photoEnabled=photoEnabled,
+                    onTakePhoto={onTakePhoto(record.id)},
+                    onToggleReport=onTogglePhotoReport
+                )
+            }
+        }
+    }
+
+    Button(onClick=onAdd){
+        Icon(Icons.Outlined.Warning,contentDescription=null)
+        Spacer(Modifier.width(8.dp))
+        Text("Eksik ekle")
+    }
+}
+
+@Composable
+private fun DeficiencyEvidencePhotos(
+    repository:SahaRepository,
+    deficiencyId:String,
+    photoEnabled:Boolean,
+    onTakePhoto:()->Unit,
+    onToggleReport:(String,Boolean)->Unit
+){
+    val photos by remember(deficiencyId){repository.observeDeficiencyPhotos(deficiencyId)}
+        .collectAsStateWithLifecycle(initialValue=emptyList())
+
+    Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment=Alignment.CenterVertically,
+            horizontalArrangement=Arrangement.SpaceBetween
+        ){
+            Text("Eksik fotoğrafları ("+photos.size+")",style=MaterialTheme.typography.labelLarge)
+            FilledTonalButton(onClick=onTakePhoto,enabled=photoEnabled){
+                Icon(Icons.Outlined.CameraAlt,contentDescription=null)
+                Spacer(Modifier.width(6.dp))
+                Text("Fotoğraf ekle")
+            }
+        }
+        photos.forEach{photo->
+            OutlinedCard(Modifier.fillMaxWidth()){
+                Row(
+                    Modifier.fillMaxWidth().padding(8.dp),
+                    verticalAlignment=Alignment.CenterVertically
+                ){
+                    LocalPhotoThumbnail(photo.localUri)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)){
+                        Text(formatTime(photo.createdAt),style=MaterialTheme.typography.bodySmall)
+                        Row(verticalAlignment=Alignment.CenterVertically){
+                            Checkbox(
+                                checked=photo.includeInReport,
+                                onCheckedChange={checked->onToggleReport(photo.id,checked)}
+                            )
+                            Text("Rapora dahil",style=MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+        if(photos.isEmpty()){
+            Text("Henüz eksik fotoğrafı yok.",style=MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+private fun DeficiencyDialog(
+    onDismiss:()->Unit,
+    onCreate:(String,String?,String?,String?,String?,String?,String?,DeficiencyPriority,Boolean)->Unit
+){
+    var title by remember{mutableStateOf("")}
+    var description by remember{mutableStateOf("")}
+    var floor by remember{mutableStateOf("")}
+    var unitNumber by remember{mutableStateOf("")}
+    var unitName by remember{mutableStateOf("")}
+    var responsible by remember{mutableStateOf("")}
+    var targetDate by remember{mutableStateOf("")}
+    var priority by remember{mutableStateOf(DeficiencyPriority.NORMAL)}
+    var include by remember{mutableStateOf(true)}
+    val targetValid=targetDate.isBlank() || Regex("""\d{4}-\d{2}-\d{2}""").matches(targetDate.trim())
+
+    AlertDialog(
+        onDismissRequest=onDismiss,
+        title={Text("İmalat eksiği ekle")},
+        text={
+            Column(
+                Modifier.heightIn(max=560.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement=Arrangement.spacedBy(8.dp)
+            ){
+                OutlinedTextField(
+                    value=title,
+                    onValueChange={title=it},
+                    label={Text("Eksik / yapılacak iş")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value=description,
+                    onValueChange={description=it},
+                    label={Text("Açıklama")},
+                    modifier=Modifier.fillMaxWidth(),
+                    minLines=2
+                )
+                OutlinedTextField(
+                    value=floor,
+                    onValueChange={floor=it},
+                    label={Text("Kat")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    OutlinedTextField(
+                        value=unitNumber,
+                        onValueChange={unitNumber=it},
+                        label={Text("Mahal / daire / birim no")},
+                        modifier=Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value=unitName,
+                        onValueChange={unitName=it},
+                        label={Text("Mahal / daire / birim adı")},
+                        modifier=Modifier.weight(1f)
+                    )
+                }
+                OutlinedTextField(
+                    value=responsible,
+                    onValueChange={responsible=it},
+                    label={Text("Sorumlu kişi / ekip")},
+                    modifier=Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value=targetDate,
+                    onValueChange={targetDate=it},
+                    label={Text("Hedef tarih (YYYY-AA-GG)")},
+                    isError=!targetValid,
+                    supportingText={
+                        if(!targetValid) Text("Örn. 2026-10-15")
+                    },
+                    modifier=Modifier.fillMaxWidth()
+                )
+                Text("Öncelik",style=MaterialTheme.typography.labelLarge)
+                LazyRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                    items(DeficiencyPriority.entries,key={it.name}){value->
+                        FilterChip(
+                            selected=priority==value,
+                            onClick={priority=value},
+                            label={Text(value.label)}
+                        )
+                    }
+                }
+                Row(verticalAlignment=Alignment.CenterVertically){
+                    Checkbox(checked=include,onCheckedChange={include=it})
+                    Text("Rapora dahil")
+                }
+                Text(
+                    "Giderildi durumu eksik kaydını kapatmaz; Kontrol edildi olana kadar aktif listede kalır.",
+                    style=MaterialTheme.typography.bodySmall
+                )
+            }
+        },
+        confirmButton={
+            TextButton(
+                onClick={
+                    onCreate(
+                        title,
+                        description.trim().ifBlank{null},
+                        floor.trim().ifBlank{null},
+                        unitNumber.trim().ifBlank{null},
+                        unitName.trim().ifBlank{null},
+                        responsible.trim().ifBlank{null},
+                        targetDate.trim().ifBlank{null},
+                        priority,
+                        include
+                    )
+                },
+                enabled=title.isNotBlank() && targetValid
+            ){Text("Eksik aç")}
+        },
+        dismissButton={TextButton(onClick=onDismiss){Text("Vazgeç")}}
+    )
 }
 
 @Composable
